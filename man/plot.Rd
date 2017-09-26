@@ -10,7 +10,7 @@
   "interaction"), avg.line = TRUE, ...)
 
 \method{plot}{subgroup_validated}(x, type = c("boxplot", "density",
-  "interaction"), avg.line = TRUE, ...)
+  "interaction", "stability"), avg.line = TRUE, ...)
 }
 \arguments{
 \item{x}{fitted object returned by \code{validate.subgroup()} or \code{fit.subgroup()} function}
@@ -92,6 +92,12 @@ plot(valmod)
 plot(valmod, type = "boxplot")
 
 plot(valmod, type = "interaction")
+
+# visualize the frequency of particular variables
+# of being selected across the resampling iterations with
+# 'type = "stability"'
+# not run:
+# plot(valmod, type = "stability")
 
 }
 \seealso{

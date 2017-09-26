@@ -72,7 +72,11 @@ print(comp, p.value = 0.01)
 
 # or we can simply supply the matrix x and the subgroups
 comp2 <- summarize.subgroups(x, subgroup = 1 * (subgrp.model$benefit.scores > 0))
+
+print(comp2, p.value = 0.01)
+
 }
 \seealso{
-\code{\link[personalized]{fit.subgroup}} for function which fits subgroup identification models.
+\code{\link[personalized]{fit.subgroup}} for function which fits subgroup identification models and
+\code{\link[personalized]{print.subgroup_summary}} for arguments for printing options for \code{summarize.subgroups()}.
 }

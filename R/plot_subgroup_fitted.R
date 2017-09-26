@@ -64,6 +64,8 @@ plot.subgroup_fitted <- function(x,
 
     avg.res  <- x$subgroup.trt.effects
 
+    outcome.lab <- "Outcome"
+
     if (type != "interaction")
     {
         if (is.null(x$call)) stop("retcall argument must be set to TRUE for fitted model object")
@@ -78,15 +80,17 @@ plot.subgroup_fitted <- function(x,
         cutpoint <- x$call$cutpoint
         lb       <- x$call$larger.outcome.better
 
-        trt.rec  <- if (lb) {1 * (benefit.scores > cutpoint)} else
-            1 * (benefit.scores < cutpoint)
+        trt.rec  <- x$recommended.trts
 
-        res.2.plot[, 1] <- ifelse(trt.rec == 1, "Recommended Trt", "Recommended Ctrl")
-        res.2.plot[, 2] <- ifelse(x$call$trt == 1, "Received Trt", "Received Ctrl")
+        #res.2.plot[, 1] <- ifelse(trt.rec == 1, "Recommended Trt", "Recommended Ctrl")
+        #res.2.plot[, 2] <- ifelse(x$call$trt == 1, "Received Trt", "Received Ctrl")
+        res.2.plot[, 1] <- paste("Recommended", trt.rec)
+        res.2.plot[, 2] <- paste("Received", x$call$trt)
 
         if (class(x$call$y) == "Surv")
         {
             res.2.plot[, 3] <- log(x$call$y[,1])
+            outcome.lab <- "log survival time"
         } else
         {
             res.2.plot[, 3] <- x$call$y
@@ -94,10 +98,10 @@ plot.subgroup_fitted <- function(x,
     }
 
 
-    avg.res.2.plot <- data.frame(Recommended = c("Recommended Trt", "Recommended Trt",
-                                                 "Recommended Ctrl", "Recommended Ctrl"),
-                                 Received    = c("Received Trt", "Received Ctrl",
-                                                 "Received Trt", "Received Ctrl"),
+    avg.res.2.plot <- data.frame(Recommended = rep(colnames(avg.res$avg.outcomes),
+                                                   each = ncol(avg.res$avg.outcomes)),
+                                 Received    = rep(rownames(avg.res$avg.outcomes),
+                                                   ncol(avg.res$avg.outcomes)),
                                  Value       = as.vector(avg.res$avg.outcomes))
 
     Recommended <- Received <- Value <- NULL
@@ -113,7 +117,7 @@ plot.subgroup_fitted <- function(x,
             coord_flip() +
             facet_grid( ~ Recommended) +
             theme(legend.position = "bottom") +
-            xlab("Outcome") +
+            xlab(outcome.lab) +
             ggtitle("Individual Observations Among Subgroups")
         if (avg.line)
         {
@@ -131,7 +135,7 @@ plot.subgroup_fitted <- function(x,
             geom_rug(aes(colour = Received), alpha = 0.85) +
             facet_grid( ~ Recommended) +
             theme(legend.position = "bottom") +
-            ylab("Outcome") +
+            ylab(outcome.lab) +
             ggtitle("Individual Observations Among Subgroups")
     } else
     {
@@ -141,7 +145,7 @@ plot.subgroup_fitted <- function(x,
             geom_point(aes(colour = Received), size = 2) +
             theme(legend.position = "bottom") +
             scale_x_discrete(expand = c(0.25, 0.25)) +
-            ylab("Average Outcome") +
+            ylab(paste0("Average ", outcome.lab)) +
             ggtitle("Average Outcomes Among Subgroups")
     }
     pl.obj

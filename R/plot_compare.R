@@ -3,7 +3,8 @@
 #' Plot a comparison results for fitted or validated subgroup identification models
 #'
 #' @description Plots comparison of results for estimated subgroup treatment effects
-#' @param ... the objects to be saved. Must be either objects returned from \code{fit.subgroup()} or \code{validate.subgroup()}
+#' @param ... the fitted (model or validation) objects to be plotted. Must be either
+#' objects returned from \code{fit.subgroup()} or \code{validate.subgroup()}
 #' @param type type of plot. \code{"density"} results in a density plot for the results
 #' across all observations (if \code{x} is from \code{fit.subgroup()}) or if \code{x} is from \code{validate.subgroup()}
 #' across iterations of either the bootstrap or training/test re-fitting. For the latter
@@ -98,6 +99,10 @@ plotCompare <- function(...,
     avg.line <- as.logical(avg.line[1])
 
     dat.list <- avg.list <- vector(mode = "list", length = n.obj)
+
+    types.vec <- character(n.obj)
+
+
     for (l in 1:n.obj)
     {
 
@@ -111,10 +116,12 @@ plotCompare <- function(...,
             avg.res  <- list.obj[[l]]$avg.results
         }
 
-        avg.res.2.plot <- data.frame(Recommended = c("Recommended Trt", "Recommended Trt",
-                                                     "Recommended Ctrl", "Recommended Ctrl"),
-                                     Received    = c("Received Trt", "Received Ctrl",
-                                                     "Received Trt", "Received Ctrl"),
+        types.vec[l] <- obj.type
+
+        avg.res.2.plot <- data.frame(Recommended = rep(colnames(avg.res$avg.outcomes),
+                                                       each = ncol(avg.res$avg.outcomes)),
+                                     Received    = rep(rownames(avg.res$avg.outcomes),
+                                                       ncol(avg.res$avg.outcomes)),
                                      Value       = as.vector(avg.res$avg.outcomes),
                                      Model       = obj.names[l])
 
@@ -130,6 +137,7 @@ plotCompare <- function(...,
                      non-interaction plot")
 
                 benefit.scores <- list.obj[[l]]$benefit.scores
+                trt.rec        <- list.obj[[l]]$recommended.trts
                 B <- NROW(benefit.scores)
 
                 res.2.plot <- array(NA, dim = c(B, 3))
@@ -139,11 +147,10 @@ plotCompare <- function(...,
                 cutpoint <- list.obj[[l]]$call$cutpoint
                 lb       <- list.obj[[l]]$call$larger.outcome.better
 
-                trt.rec  <- if (lb) {1 * (benefit.scores > cutpoint)} else
-                    1 * (benefit.scores < cutpoint)
-
-                res.2.plot[, 1] <- ifelse(trt.rec == 1, "Recommended Trt", "Recommended Ctrl")
-                res.2.plot[, 2] <- ifelse(list.obj[[l]]$call$trt == 1, "Received Trt", "Received Ctrl")
+                #res.2.plot[, 1] <- ifelse(trt.rec == 1, "Recommended Trt", "Recommended Ctrl")
+                #res.2.plot[, 2] <- ifelse(x$call$trt == 1, "Received Trt", "Received Ctrl")
+                res.2.plot[, 1] <- paste("Recommended", trt.rec)
+                res.2.plot[, 2] <- paste("Received", list.obj[[l]]$call$trt)
 
                 if (class(list.obj[[l]]$call$y) == "Surv")
                 {
@@ -155,20 +162,23 @@ plotCompare <- function(...,
             } else
             {
                 boot.res <- list.obj[[l]]$boot.results$avg.outcomes
+                boot.dims <- dim(boot.res)
 
-                B <- dim(boot.res)[1]
 
-                res.2.plot <- array(NA, dim = c(B * 4, 3))
+                n.entries <- prod(boot.dims[2:3])
+                B <- boot.dims[1]
+
+                res.2.plot <- array(NA, dim = c(B * n.entries, 3))
                 colnames(res.2.plot) <- c("Recommended", "Received", "Value")
                 res.2.plot <- data.frame(res.2.plot)
 
                 for (b in 1:B)
                 {
-                    cur.idx <- c(((b - 1) * 4 + 1):(b * 4))
-                    res.2.plot[cur.idx, 1] <- c("Recommended Trt", "Recommended Trt",
-                                                "Recommended Ctrl", "Recommended Ctrl")
-                    res.2.plot[cur.idx, 2] <- c("Received Trt", "Received Ctrl",
-                                                "Received Trt", "Received Ctrl")
+                    cur.idx <- c(((b - 1) * n.entries + 1):(b * n.entries))
+                    res.2.plot[cur.idx, 1] <- rep(colnames(boot.res[b,,]),
+                                                  each = ncol(boot.res[b,,]))
+                    res.2.plot[cur.idx, 2] <- rep(rownames(boot.res[b,,]),
+                                                  ncol(boot.res[b,,]))
                     res.2.plot[cur.idx, 3] <- as.vector(boot.res[b,,])
                 }
 
@@ -186,7 +196,6 @@ plotCompare <- function(...,
     Recommended <- Received <- Value <- Model <- NULL
 
 
-
     if (type == "density")
     {
         pl.obj <- ggplot(res.2.plot,
@@ -196,8 +205,7 @@ plotCompare <- function(...,
             coord_flip() +
             facet_grid(Recommended ~ Model) +
             theme(legend.position = "bottom") +
-            xlab("Outcome") +
-            ggtitle("Individual Observations Among Subgroups")
+            xlab("Outcome")
         if (avg.line)
         {
             pl.obj <- pl.obj + geom_vline(data = avg.res.2.plot,
@@ -214,8 +222,7 @@ plotCompare <- function(...,
             geom_rug(aes(colour = Received), alpha = 0.85) +
             facet_grid(Recommended ~ Model) +
             theme(legend.position = "bottom") +
-            ylab("Outcome") +
-            ggtitle("Individual Observations Among Subgroups")
+            ylab("Outcome")
     } else
     {
         pl.obj <- ggplot(avg.res.2.plot,
@@ -225,8 +232,7 @@ plotCompare <- function(...,
             facet_grid( ~ Model) +
             theme(legend.position = "bottom") +
             scale_x_discrete(expand = c(0.25, 0.25)) +
-            ylab("Average Outcome") +
-            ggtitle("Average Outcomes Among Subgroups")
+            ylab("Average Outcome")
     }
     pl.obj
 }

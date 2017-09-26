@@ -4,12 +4,13 @@
 \alias{fit.subgroup}
 \title{Fitting subgroup identification models}
 \usage{
-fit.subgroup(x, y, trt, propensity.func, loss = c("sq_loss_lasso",
+fit.subgroup(x, y, trt, propensity.func = NULL, loss = c("sq_loss_lasso",
   "logistic_loss_lasso", "cox_loss_lasso", "sq_loss_lasso_gam",
   "logistic_loss_lasso_gam", "sq_loss_gam", "logistic_loss_gam", "sq_loss_gbm",
-  "abs_loss_gbm", "huberized_loss_gbm", "logistic_loss_gbm", "cox_loss_gbm"),
-  method = c("weighting", "a_learning"), augment.func = NULL,
-  cutpoint = 0, larger.outcome.better = TRUE, retcall = TRUE, ...)
+  "abs_loss_gbm", "logistic_loss_gbm", "cox_loss_gbm"),
+  method = c("weighting", "a_learning"), match.id = NULL,
+  augment.func = NULL, cutpoint = 0, larger.outcome.better = TRUE,
+  reference.trt = NULL, retcall = TRUE, ...)
 }
 \arguments{
 \item{x}{The design matrix (not including intercept term)}
@@ -27,7 +28,7 @@ of patients assigned to the treatment group, i.e.:
 
 \item{loss}{choice of both the M function from Chen, et al (2017) and potentially the penalty used for variable selection.
 All \code{loss} options starting with \code{sq_loss} use M(y, v) = (v - y) ^ 2, all options starting with \code{logistic_loss} use
-the logistic loss: M(y, v) = y * log(1 + exp{-v}), and all options starting with \code{cox_loss} use the negative partial likelihood loss for the Cox PH model.
+the logistic loss: M(y, v) = y * log(1 + exp\{-v\}), and all options starting with \code{cox_loss} use the negative partial likelihood loss for the Cox PH model.
 All options ending with \code{lasso} have a lasso penalty added to the loss for variable selection. \code{sq_loss_lasso_gam}
 and \code{logistic_loss_lasso_gam} first use the lasso to select variables and then fit a generalized additive model
 with nonparametric additive terms for each selected variable. \code{sq_loss_gam} involves a squared error loss with a generalized additive model and no variable selection.
@@ -39,17 +40,26 @@ is complex.
     \item{\code{"logistic_loss_lasso"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with with linear model and lasso penalty}
     \item{\code{"cox_loss_lasso"}}{ - M corresponds to the negative partial likelihood of the cox model with linear model and additionally a lasso penalty}
     \item{\code{"sq_loss_lasso_gam"}}{ - M(y, v) = (v - y) ^ 2 with variables selected by lasso penalty and generalized additive model fit on the selected variables}
-    \item{\code{"logistic_loss_lasso_gam"}}{ - M(y, v) = y * log(1 + exp{-v}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
+    \item{\code{"logistic_loss_lasso_gam"}}{ - M(y, v) = y * log(1 + exp\{-v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
     \item{\code{"sq_loss_gam"}}{ - M(y, v) = (v - y) ^ 2 with generalized additive model fit on all variables}
-    \item{\code{"logistic_loss_gam"}}{ - M(y, v) = y * log(1 + exp{-v}) with generalized additive model fit on all variables}
+    \item{\code{"logistic_loss_gam"}}{ - M(y, v) = y * log(1 + exp\{-v\}) with generalized additive model fit on all variables}
     \item{\code{"sq_loss_gbm"}}{ - M(y, v) = (v - y) ^ 2 with gradient-boosted decision trees model}
     \item{\code{"abs_loss_gbm"}}{ - M(y, v) = |v - y| with gradient-boosted decision trees model}
-    \item{\code{"huberized_loss_gbm"}}{ - M corresponds to Huberized hinge loss (for binary outcomes) with gradient-boosted decision trees model}
     \item{\code{"logistic_loss_gbm"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with gradient-boosted decision trees model}
     \item{\code{"cox_loss_gbm"}}{ - M corresponds to the negative partial likelihood of the cox model with gradient-boosted decision trees model}
 }}
 
 \item{method}{subgroup ID model type. Either the weighting or A-learning method of Chen et al, (2017)}
+
+\item{match.id}{a (character, factor, or integer) vector with length equal to the number of observations in \code{x} indicating using integers or
+levels of a factor vector which patients are
+in which matched groups. Defaults to \code{NULL} and assumes the samples are not from a matched cohort. Matched
+case-control groups can be created using any method (propensity score matching, optimal matching, etc). If each case
+is matched with a control or multiple controls, this would indicate which case-control pairs or groups go together.
+If \code{match.id} is supplied, then it is unecessary to specify a function via the \code{propensity.func} argument.
+A quick usage example: if the first patient is a case and the second and third are controls matched to it, and the
+fouth patient is a case and the fifth through seventh patients are matched with it, then the user should specify
+\code{match.id = c(1,1,1,2,2,2,2)} or \code{match.id = c(rep("Grp1", 3),rep("Grp2", 4)) }}
 
 \item{augment.func}{function which inputs the response \code{y}, the covariates \code{x}, and \code{trt} and outputs
 predicted values for the response using a model constructed with \code{x}. \code{augment.func()} can also be simply
@@ -66,15 +76,18 @@ will be recommended to be in the treatment group}
 \item{larger.outcome.better}{boolean value of whether a larger outcome is better/preferable. Set to \code{TRUE}
 if a larger outcome is better/preferable and set to \code{FALSE} if a smaller outcome is better/preferable. Defaults to \code{TRUE}.}
 
+\item{reference.trt}{which treatment should be treated as the reference treatment. Defaults to the first level of \code{trt}
+if \code{trt} is a factor or the first alphabetical or numerically first treatment level.}
+
 \item{retcall}{boolean value. if \code{TRUE} then the passed arguments will be saved. Do not set to \code{FALSE}
-if the \code{validate.subgroupu()} function will later be used for your fitted subgroup model. Only set to \code{FALSE}
-if memory is limited as setting to code{TRUE} saves the design matrix to the fitted object}
+if the \code{validate.subgroup()} function will later be used for your fitted subgroup model. Only set to \code{FALSE}
+if memory is limited as setting to \code{TRUE} saves the design matrix to the fitted object}
 
 \item{...}{options to be passed to underlying fitting function. For all \code{loss} options with \code{lasso},
 this will be passed to \code{cv.glmnet} and for all \code{loss} options with \code{mcp} this will be passed
 to \code{cv.ncvreg}. Note that for all \code{loss} options that use \code{gam()} from the \code{mgcv} package,
 the user cannot supply the \code{gam} argument \code{method} because it is also an argument of \code{fit.subgroup}, so
-instead, to change the \code{gam method} argument, instead supply \code{method.gam}, ie \code{method.gam = "REML"}.}
+instead, to change the \code{gam method} argument, supply \code{method.gam}, ie \code{method.gam = "REML"}.}
 }
 \description{
 Fits subgroup identification model class of Chen, et al (2017)
@@ -169,7 +182,8 @@ and comparative treatment scoring. Biometrics. doi:10.1111/biom.12676 \url{http:
 \seealso{
 \code{\link[personalized]{validate.subgroup}} for function which creates validation results for subgroup
 identification models, \code{\link[personalized]{predict.subgroup_fitted}} for a prediction function for fitted models
-from \code{fit.subgroup}, and \code{\link[personalized]{plot.subgroup_fitted}} for a function which plots
-results from fitted models
+from \code{fit.subgroup}, \code{\link[personalized]{plot.subgroup_fitted}} for a function which plots
+results from fitted models, and \code{\link[personalized]{print.subgroup_fitted}}
+for arguments for printing options for \code{fit.subgroup()}.
 from \code{fit.subgroup}.
 }

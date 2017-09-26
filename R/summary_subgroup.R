@@ -26,18 +26,64 @@ summary.subgroup_fitted <- function(object, digits = max(getOption('digits')-3, 
 
         ## if variables are selected print out how many are selected
         ## and their coefficient estimates
-        if (length(sel.idx) > 0)
+        sel.varnames <- vnames[sel.idx]
+        cat(length(sel.idx) - object$n.trts + 1,
+            "out of",
+            length(est.coef) - object$n.trts + 1,
+            "variables selected in total by the lasso (cross validation criterion).\n\n")
+
+        if (object$n.trts == 2)
         {
-            sel.varnames <- vnames[sel.idx]
-            cat(length(sel.idx), "variables selected by the lasso (cross validation criterion).\n\n")
             coefmat <- matrix(est.coef[sel.idx], ncol = 1)
             rownames(coefmat) <- sel.varnames
             colnames(coefmat) <- "Estimate"
+
             print.default(round(coefmat, digits), quote = FALSE, right = TRUE, na.print = "NA", ...)
         } else
         {
-            cat("No variables selected by the lasso with cross validation. \n\n")
+            ## no extra intercept term when the model is a cox model
+            if (class(object$model$glmnet.fit)[1] == "coxnet")
+            {
+                est.coef  <- predict(object$model, type = "coef", s = "lambda.min")
+            } else
+            {
+                est.coef  <- predict(object$model, type = "coef", s = "lambda.min")[-1,,drop=FALSE]
+            }
+            vnames    <- rownames(est.coef)
+
+            ## remove the unecessary ".#" artificially added to variable names
+            vnames    <- gsub("[.][0-9]*$", "", vnames)
+
+            all.coefs <- unname(as.vector(drop(est.coef)))
+
+            n.coefs.per.trt <- length(all.coefs) / (object$n.trts - 1)
+            for (t in 1:(object$n.trts - 1))
+            {
+                idx.coefs.cur <- (n.coefs.per.trt * (t - 1) + 1):(n.coefs.per.trt * t)
+                coefs.cur     <- all.coefs[idx.coefs.cur]
+
+                sel.idx  <- which(coefs.cur != 0)
+
+                cat("\n")
+
+                ## if variables are selected print out how many are selected
+                ## and their coefficient estimates
+                sel.varnames.cur <- vnames[idx.coefs.cur][sel.idx]
+                cat(length(sel.idx) - 1,
+                    "out of",
+                    length(coefs.cur),
+                    "variables selected for delta", t, "by the lasso (cross validation criterion).\n\n")
+
+                coefmat <- matrix(coefs.cur[sel.idx], ncol = 1)
+
+                rownames(coefmat) <- sel.varnames.cur
+                colnames(coefmat) <- paste0("Estimates for delta(",
+                                            object$comparison.trts[t], " vs ", object$reference.trt, ")" )
+
+                print.default(round(coefmat, digits), quote = FALSE, right = TRUE, na.print = "NA", ...)
+            }
         }
+
     } else
     {
         return(summary(object$model))

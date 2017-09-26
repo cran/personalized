@@ -16,7 +16,10 @@
 #' @seealso \code{\link[personalized]{validate.subgroup}} for function which creates validation results
 #' and \code{\link[personalized]{fit.subgroup}} for function which fits subgroup identification models.
 #' @rdname plot
-#' @import ggplot2
+#' @import plotly
+#' @importFrom ggplot2 ggplot aes geom_density geom_rug coord_flip facet_grid theme xlab
+#' @importFrom ggplot2 ylab ggtitle geom_vline geom_boxplot geom_line geom_point
+#' @importFrom ggplot2 scale_x_discrete geom_histogram geom_rect geom_hline xlim geom_bar
 #'
 #' @examples
 #'
@@ -31,9 +34,15 @@
 #'
 #' plot(valmod, type = "interaction")
 #'
+#' # visualize the frequency of particular variables
+#' # of being selected across the resampling iterations with
+#' # 'type = "stability"'
+#' # not run:
+#' # plot(valmod, type = "stability")
+#'
 #' @export
 plot.subgroup_validated <- function(x,
-                                    type = c("boxplot", "density", "interaction"),
+                                    type = c("boxplot", "density", "interaction", "stability"),
                                     avg.line = TRUE,
                                     ...)
 {
@@ -45,27 +54,31 @@ plot.subgroup_validated <- function(x,
 
     boot.res <- x$boot.results$avg.outcomes
     avg.res  <- x$avg.results
-    B <- dim(boot.res)[1]
 
-    res.2.plot <- array(NA, dim = c(B * 4, 3))
+    boot.dims <- dim(boot.res)
+
+    n.entries <- prod(boot.dims[2:3])
+    B <- boot.dims[1]
+
+    res.2.plot <- array(NA, dim = c(B * n.entries, 3))
     colnames(res.2.plot) <- c("Recommended", "Received", "Value")
     res.2.plot <- data.frame(res.2.plot)
 
-    avg.res.2.plot <- data.frame(Recommended = c("Recommended Trt", "Recommended Trt",
-                                                 "Recommended Ctrl", "Recommended Ctrl"),
-                                 Received    = c("Received Trt", "Received Ctrl",
-                                                 "Received Trt", "Received Ctrl"),
+    avg.res.2.plot <- data.frame(Recommended = rep(colnames(avg.res$avg.outcomes),
+                                                   each = ncol(avg.res$avg.outcomes)),
+                                 Received    = rep(rownames(avg.res$avg.outcomes),
+                                                   ncol(avg.res$avg.outcomes)),
                                  Value       = as.vector(avg.res$avg.outcomes))
 
     Recommended <- Received <- Value <- NULL
 
     for (b in 1:B)
     {
-        cur.idx <- c(((b - 1) * 4 + 1):(b * 4))
-        res.2.plot[cur.idx, 1] <- c("Recommended Trt", "Recommended Trt",
-                                    "Recommended Ctrl", "Recommended Ctrl")
-        res.2.plot[cur.idx, 2] <- c("Received Trt", "Received Ctrl",
-                                    "Received Trt", "Received Ctrl")
+        cur.idx <- c(((b - 1) * n.entries + 1):(b * n.entries))
+        res.2.plot[cur.idx, 1] <- rep(colnames(boot.res[b,,]),
+                                      each = ncol(boot.res[b,,]))
+        res.2.plot[cur.idx, 2] <- rep(rownames(boot.res[b,,]),
+                                      ncol(boot.res[b,,]))
         res.2.plot[cur.idx, 3] <- as.vector(boot.res[b,,])
     }
 
@@ -83,18 +96,18 @@ plot.subgroup_validated <- function(x,
 
     if (family == "cox")
     {
-        ylab.text <- "Average Restricted Mean"
+        ylab.text <- "Average Restricted Mean Survival"
     }
 
     if (type == "density")
     {
         pl.obj <- ggplot(res.2.plot,
                          aes(x = Value, fill = Received)) +
-                      geom_density(alpha = 0.65) +
-                      geom_rug(aes(colour = Received), alpha = 0.85) +
-                      coord_flip() +
-                      facet_grid( ~ Recommended) +
-                      theme(legend.position = "bottom") +
+            geom_density(alpha = 0.65) +
+            geom_rug(aes(colour = Received), alpha = 0.85) +
+            coord_flip() +
+            facet_grid( ~ Recommended) +
+            theme(legend.position = "bottom") +
             xlab(ylab.text) +
             ggtitle(title.text)
         if (avg.line)
@@ -102,8 +115,8 @@ plot.subgroup_validated <- function(x,
             pl.obj <- pl.obj + geom_vline(data = avg.res.2.plot,
                                           aes(xintercept = Value),
                                           size = 1.25) +
-                               geom_vline(data = avg.res.2.plot,
-                                          aes(xintercept = Value, colour = Received))
+                geom_vline(data = avg.res.2.plot,
+                           aes(xintercept = Value, colour = Received))
         }
     } else if (type == "boxplot")
     {
@@ -115,6 +128,82 @@ plot.subgroup_validated <- function(x,
             theme(legend.position = "bottom") +
             ylab(ylab.text) +
             ggtitle(title.text)
+    } else if (type == "stability")
+    {
+      # Acquire coefficients for each bootstrap iteration (exclude Intercept and Trt terms)
+      d <- as.data.frame(x$boot.results[[4]][-c(1,2),])
+
+      # Variables to be created in this code block
+      pct.selected <- signs <- is.consistent <- summary.stats <- min.stat  <- med.stat <- max.stat <-
+        bar.type <- name <- plot.idx <- Variable <- Selection <- Median <- Range <- p.primary <- p.secondary <- NULL
+
+      # Compute percentage of times each variable was selected
+      d$pct.selected <- apply(d,1,function(x){sum(x!=0)}/ncol(d)*100)
+
+      # Remove instances where variables were never selected in any bootstrap iteration
+      d <- subset(d, pct.selected != 0)
+
+      # Compute percentage of time variable has consistent sign.
+      # A variable is deemed consistent if it has the same sign at least 95% of the times it was selected.
+      signs <- apply(d[,grep("B",colnames(d), value=T)],1,function(x){sign(x)[x!=0]})
+      d$is.consistent <- sapply(signs,function(x){any(table(x) / length(x) >= .95)})
+
+      # Calculate min, median, and max
+      summary.stats <- apply(d[,grep("B",colnames(d), value=TRUE)],1,function(x){summary(x[x!=0])})
+      d$min.stat <- summary.stats["Min.",]
+      d$med.stat <- summary.stats["Median",]
+      d$max.stat <- summary.stats["Max.",]
+
+      # Create label for bar type (Positive/Negative Tendency or Mixed)
+      d$bar.type <- factor(ifelse(d$is.consistent, ifelse(d$med.stat > 0,"Positive Tendency","Negative Tendency"),"Mixed"),
+                           levels=c("Negative Tendency", "Mixed", "Positive Tendency"))
+
+      # Order by most frequently selected and bar type
+      d <- d[order(d$bar.type,-d$pct.selected),]
+
+      # Add variable name and plot index to data for plotting purposes
+      d$name <- rownames(d)
+      d$plot.idx <- 1:nrow(d)
+
+      # Remove individual bootstrap values from plotting data frame
+      d <- d[,!(names(d) %in% grep("B",names(d),value=TRUE))]
+
+      # Create tooltip statistics
+      d$Variable <- d$name
+      d$Selection <- paste0(d$pct.selected,"%")
+      d$Median <- round(d$med.stat,4)
+      d$Range <- paste0("[",round(d$min.stat,4),",",round(d$max.stat,4),"]")
+
+      # Primary Plot - Range with median points
+      p.primary <- ggplot(d, aes(xmin = plot.idx-0.5, xmax=plot.idx+0.5, ymin = min.stat, ymax = max.stat, x=plot.idx, y = med.stat, fill = bar.type,
+                                 tooltip1 = Variable, tooltip2 = Selection, tooltip3 = Median, tooltip4 = Range )) +
+      geom_rect(color="black", stat="identity") +
+      geom_point(size=2, shape=21, color="black", fill="azure1", stat="identity") +
+      geom_hline(yintercept = 0) +
+      geom_vline(xintercept = c(which.min(d$bar.type=="Negative Tendency") - 0.5, which.max(d$bar.type=="Positive Tendency") - 0.5), linetype = "dashed") +
+      xlim(0,nrow(d)+1)
+
+      # Secondary Plot - Distribution of selection probability
+      p.secondary <- ggplot(d, aes(x = plot.idx, y = pct.selected, fill = bar.type,
+                                   tooltip1 = Variable, tooltip2 = Selection)) +
+      geom_bar(stat="identity") +
+      geom_vline(xintercept = c(which.min(d$bar.type=="Negative Tendency") - 0.5, which.max(d$bar.type=="Positive Tendency") - 0.5), linetype = "dashed")
+
+      # Combine plots and create plotly object
+      pl.obj <-
+      subplot(ggplotly(p.primary, tooltip = paste0("tooltip",1:4)),
+              ggplotly(p.secondary, tooltip = paste0("tooltip",1:2)),
+              nrows=2,
+              shareX = TRUE,
+              titleX = TRUE,
+              titleY = TRUE
+             ) %>%
+      layout(title="Variable Selection Across Bootstrap Iterations",
+             showlegend=FALSE,
+             xaxis =  list(title = "Plot Index"),
+             yaxis =  list(title = "Coefficient Value"),
+             yaxis2 = list(title = "Percent of Times Selected")
+            )
     } else
     {
         pl.obj <- ggplot(avg.res.2.plot,
@@ -126,6 +215,7 @@ plot.subgroup_validated <- function(x,
             ylab(ylab.text) +
             ggtitle(title.text)
     }
+    # Return plot
     pl.obj
-}
 
+}
