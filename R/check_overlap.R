@@ -16,17 +16,18 @@
 #' group, a density (\code{type = "density"}) for each treatment group, or to plot both a density and histogram
 #' (\code{type = "code"})
 #' @param bins integer number of bins for histograms when \code{type = "histogram"}
+#' @importFrom ggplot2 guides guide_legend
 #' @examples
 #' library(personalized)
 #'
 #' set.seed(123)
-#' n.obs  <- 500
-#' n.vars <- 25
+#' n.obs  <- 250
+#' n.vars <- 15
 #' x <- matrix(rnorm(n.obs * n.vars, sd = 3), n.obs, n.vars)
 #'
 #'
 #' # simulate non-randomized treatment
-#' xbetat   <- 0.25 + 0.5 * x[,21] - 0.5 * x[,25]
+#' xbetat   <- 0.25 + 0.5 * x[,11] - 0.5 * x[,12]
 #' trt.prob <- exp(xbetat) / (1 + exp(xbetat))
 #' trt01    <- rbinom(n.obs, 1, prob = trt.prob)
 #'
@@ -53,7 +54,7 @@
 #'
 #'
 #' # simulated non-randomized treatment with multiple levels
-#' xbetat_1   <- 0.15 + 0.5 * x[,21] - 0.25 * x[,25]
+#' xbetat_1   <- 0.15 + 0.5 * x[,9] - 0.25 * x[,12]
 #' xbetat_2   <- 0.15 - 0.5 * x[,11] + 0.25 * x[,15]
 #' trt.1.prob <- exp(xbetat_1) / (1 + exp(xbetat_1) + exp(xbetat_2))
 #' trt.2.prob <- exp(xbetat_2) / (1 + exp(xbetat_1) + exp(xbetat_2))
@@ -140,7 +141,7 @@ check.overlap <- function(x,
 
         }
 
-        prop.scores <- data.frame(Treatment_Received = as.factor(rep(trt, ncol(pi.x))),
+        prop.scores <- data.frame(Treatment_Received = as.factor(rep(trt, NCOL(pi.x))),
                                   Treatment = rep(trt.names, NROW(trt)),
                                   prop.score = as.vector(t(pi.x)))
 

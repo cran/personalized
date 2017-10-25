@@ -5,9 +5,12 @@
 \title{Fitting subgroup identification models}
 \usage{
 fit.subgroup(x, y, trt, propensity.func = NULL, loss = c("sq_loss_lasso",
-  "logistic_loss_lasso", "cox_loss_lasso", "sq_loss_lasso_gam",
-  "logistic_loss_lasso_gam", "sq_loss_gam", "logistic_loss_gam", "sq_loss_gbm",
-  "abs_loss_gbm", "logistic_loss_gbm", "cox_loss_gbm"),
+  "logistic_loss_lasso", "cox_loss_lasso", "owl_logistic_loss_lasso",
+  "owl_logistic_flip_loss_lasso", "owl_hinge_loss", "owl_hinge_flip_loss",
+  "sq_loss_lasso_gam", "logistic_loss_lasso_gam", "sq_loss_gam",
+  "logistic_loss_gam", "owl_logistic_loss_gam", "owl_logistic_flip_loss_gam",
+  "owl_logistic_loss_lasso_gam", "owl_logistic_flip_loss_lasso_gam",
+  "sq_loss_gbm", "abs_loss_gbm", "logistic_loss_gbm", "cox_loss_gbm"),
   method = c("weighting", "a_learning"), match.id = NULL,
   augment.func = NULL, cutpoint = 0, larger.outcome.better = TRUE,
   reference.trt = NULL, retcall = TRUE, ...)
@@ -36,17 +39,35 @@ with nonparametric additive terms for each selected variable. \code{sq_loss_gam}
 allows for flexible estimation using machine learning and can be useful when the underlying treatment-covariate interaction
 is complex.
 \itemize{
-    \item{\code{"sq_loss_lasso"}}{ - M(y, v) = (v - y) ^ 2 with linear model and lasso penalty}
-    \item{\code{"logistic_loss_lasso"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with with linear model and lasso penalty}
-    \item{\code{"cox_loss_lasso"}}{ - M corresponds to the negative partial likelihood of the cox model with linear model and additionally a lasso penalty}
-    \item{\code{"sq_loss_lasso_gam"}}{ - M(y, v) = (v - y) ^ 2 with variables selected by lasso penalty and generalized additive model fit on the selected variables}
-    \item{\code{"logistic_loss_lasso_gam"}}{ - M(y, v) = y * log(1 + exp\{-v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
-    \item{\code{"sq_loss_gam"}}{ - M(y, v) = (v - y) ^ 2 with generalized additive model fit on all variables}
-    \item{\code{"logistic_loss_gam"}}{ - M(y, v) = y * log(1 + exp\{-v\}) with generalized additive model fit on all variables}
-    \item{\code{"sq_loss_gbm"}}{ - M(y, v) = (v - y) ^ 2 with gradient-boosted decision trees model}
-    \item{\code{"abs_loss_gbm"}}{ - M(y, v) = |v - y| with gradient-boosted decision trees model}
-    \item{\code{"logistic_loss_gbm"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with gradient-boosted decision trees model}
-    \item{\code{"cox_loss_gbm"}}{ - M corresponds to the negative partial likelihood of the cox model with gradient-boosted decision trees model}
+    \item{Continuous Outcomes}
+    \itemize{
+        \item{\code{"sq_loss_lasso"}}{ - M(y, v) = (v - y) ^ 2 with linear model and lasso penalty}
+        \item{\code{"owl_logistic_loss_lasso"}} { - M(y, v) = ylog(1 + exp\{-v\}) (method of Regularized Outcome Weighted Subgroup Identification)}
+        \item{\code{"owl_logistic_flip_loss_lasso"}} { - M(y, v) = |y|log(1 + exp\{-sign(y)v\})}
+        \item{\code{"owl_hinge_loss"}} { - M(y, v) = ymax(0, 1 - v) (method of Estimating individualized treatment rules using outcome weighted learning)}
+        \item{\code{"owl_hinge_flip_loss"}} { - M(y, v) = |y|max(0, 1 - sign(y)v) }
+        \item{\code{"sq_loss_lasso_gam"}}{ - M(y, v) = (v - y) ^ 2 with variables selected by lasso penalty and generalized additive model fit on the selected variables}
+        \item{\code{"sq_loss_gam"}}{ - M(y, v) = (v - y) ^ 2 with generalized additive model fit on all variables}
+        \item{\code{"owl_logistic_loss_gam"}} { - M(y, v) = ylog(1 + exp\{-v\}) with generalized additive model fit on all variables}
+        \item{\code{"owl_logistic_flip_loss_gam"}} { - M(y, v) = |y|log(1 + exp\{-sign(y)v\}) with generalized additive model fit on all variables}
+        \item{\code{"owl_logistic_loss_lasso_gam"}} { - M(y, v) = ylog(1 + exp\{-v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
+        \item{\code{"owl_logistic_flip_loss_lasso_gam"}} { - M(y, v) = |y|log(1 + exp\{-sign(y)v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
+        \item{\code{"sq_loss_gbm"}}{ - M(y, v) = (v - y) ^ 2 with gradient-boosted decision trees model}
+        \item{\code{"abs_loss_gbm"}}{ - M(y, v) = |v - y| with gradient-boosted decision trees model}
+    }
+    \item{Binary Outcomes}
+    \itemize{
+        \item{All losses for continuous outcomes can be used plus the following:}
+        \item{\code{"logistic_loss_lasso"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with with linear model and lasso penalty}
+        \item{\code{"logistic_loss_lasso_gam"}}{ - M(y, v) = y * log(1 + exp\{-v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
+        \item{\code{"logistic_loss_gam"}}{ - M(y, v) = y * log(1 + exp\{-v\}) with generalized additive model fit on all variables}
+        \item{\code{"logistic_loss_gbm"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with gradient-boosted decision trees model}
+    }
+    \item{Time-to-Event Outcomes}
+    \itemize{
+        \item{\code{"cox_loss_lasso"}}{ - M corresponds to the negative partial likelihood of the cox model with linear model and additionally a lasso penalty}
+        \item{\code{"cox_loss_gbm"}}{ - M corresponds to the negative partial likelihood of the cox model with gradient-boosted decision trees model}
+    }
 }}
 
 \item{method}{subgroup ID model type. Either the weighting or A-learning method of Chen et al, (2017)}
@@ -62,12 +83,21 @@ fouth patient is a case and the fifth through seventh patients are matched with 
 \code{match.id = c(1,1,1,2,2,2,2)} or \code{match.id = c(rep("Grp1", 3),rep("Grp2", 4)) }}
 
 \item{augment.func}{function which inputs the response \code{y}, the covariates \code{x}, and \code{trt} and outputs
-predicted values for the response using a model constructed with \code{x}. \code{augment.func()} can also be simply
+predicted values (on the link scale) for the response using a model constructed with \code{x}. \code{augment.func()} can also be simply
 a function of \code{x} and \code{y}. This function is used for efficiency augmentation.
 When the form of the augmentation function is correct, it can provide efficient estimation of the subgroups
 Example 1: \code{augment.func <- function(x, y) {lmod <- lm(y ~ x); return(fitted(lmod))}}
 
-Example 2: \code{augment.func <- function(x, y, trt) {lmod <- lm(y ~ x + trt); return(fitted(lmod))}}}
+Example 2: \code{augment.func <- function(x, y, trt) {lmod <- lm(y ~ x + trt); return(fitted(lmod))}}
+
+For binary and time-to-event outcomes, make sure that predictions are returned on the scale of the predictors
+
+Example 3:
+
+\code{augment.func <- function(x, y) {
+    bmod <- glm(y ~ x, family = binomial());
+    return(predict(bmod, type = "link"))}
+ }}
 
 \item{cutpoint}{numeric value for patients with benefit scores above which
 (or below which if \code{larger.outcome.better = FALSE})
@@ -83,11 +113,16 @@ if \code{trt} is a factor or the first alphabetical or numerically first treatme
 if the \code{validate.subgroup()} function will later be used for your fitted subgroup model. Only set to \code{FALSE}
 if memory is limited as setting to \code{TRUE} saves the design matrix to the fitted object}
 
-\item{...}{options to be passed to underlying fitting function. For all \code{loss} options with \code{lasso},
-this will be passed to \code{cv.glmnet} and for all \code{loss} options with \code{mcp} this will be passed
-to \code{cv.ncvreg}. Note that for all \code{loss} options that use \code{gam()} from the \code{mgcv} package,
+\item{...}{options to be passed to underlying fitting function. For all \code{loss} options with 'lasso',
+this will be passed to \code{\link[glmnet]{cv.glmnet}}. For all \code{loss} options with 'gam', this will
+be passed to \code{\link[mgcv]{gam}} from the \pkg{mgcv} package
+Note that for all \code{loss} options that use \code{gam()}
+from the \pkg{mgcv} package,
 the user cannot supply the \code{gam} argument \code{method} because it is also an argument of \code{fit.subgroup}, so
-instead, to change the \code{gam method} argument, supply \code{method.gam}, ie \code{method.gam = "REML"}.}
+instead, to change the \code{gam method} argument, supply \code{method.gam}, ie \code{method.gam = "REML"}.
+
+For all \code{loss} options with 'hinge', this will be passed to both \code{\link[personalized]{weighted.ksvm}} and
+\code{\link[kernlab]{ipop}} from the \pkg{kernlab} package}
 }
 \description{
 Fits subgroup identification model class of Chen, et al (2017)
@@ -96,13 +131,13 @@ Fits subgroup identification model class of Chen, et al (2017)
 library(personalized)
 
 set.seed(123)
-n.obs  <- 1000
-n.vars <- 50
+n.obs  <- 500
+n.vars <- 15
 x <- matrix(rnorm(n.obs * n.vars, sd = 3), n.obs, n.vars)
 
 
 # simulate non-randomized treatment
-xbetat   <- 0.5 + 0.5 * x[,21] - 0.5 * x[,41]
+xbetat   <- 0.5 + 0.5 * x[,7] - 0.5 * x[,9]
 trt.prob <- exp(xbetat) / (1 + exp(xbetat))
 trt01    <- rbinom(n.obs, 1, prob = trt.prob)
 
@@ -140,7 +175,7 @@ subgrp.model <- fit.subgroup(x = x, y = y,
                            trt = trt01,
                            propensity.func = prop.func,
                            loss   = "sq_loss_lasso",
-                           nfolds = 5)              # option for cv.glmnet
+                           nfolds = 10)              # option for cv.glmnet
 
 summary(subgrp.model)
 
@@ -178,6 +213,15 @@ subgrp.model.cox
 \references{
 Chen, S., Tian, L., Cai, T. and Yu, M. (2017), A general statistical framework for subgroup identification
 and comparative treatment scoring. Biometrics. doi:10.1111/biom.12676 \url{http://onlinelibrary.wiley.com/doi/10.1111/biom.12676/abstract}
+
+Xu, Y., Yu, M., Zhao, Y. Q., Li, Q., Wang, S., & Shao, J. (2015),
+ Regularized outcome weighted subgroup identification for differential treatment effects. Biometrics, 71(3), 645-653.
+ doi: 10.1111/biom.12322 \url{http://onlinelibrary.wiley.com/doi/10.1111/biom.12322/full}
+
+ Zhao, Y., Zeng, D., Rush, A. J., & Kosorok, M. R. (2012),
+  Estimating individualized treatment rules using outcome weighted learning.
+  Journal of the American Statistical Association, 107(499), 1106-1118. doi: 10.1080/01621459.2012.695674
+  \url{http://dx.doi.org/10.1080/01621459.2012.695674}
 }
 \seealso{
 \code{\link[personalized]{validate.subgroup}} for function which creates validation results for subgroup

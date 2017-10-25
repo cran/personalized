@@ -22,17 +22,35 @@
 #' allows for flexible estimation using machine learning and can be useful when the underlying treatment-covariate interaction
 #' is complex.
 #' \itemize{
-#'     \item{\code{"sq_loss_lasso"}}{ - M(y, v) = (v - y) ^ 2 with linear model and lasso penalty}
-#'     \item{\code{"logistic_loss_lasso"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with with linear model and lasso penalty}
-#'     \item{\code{"cox_loss_lasso"}}{ - M corresponds to the negative partial likelihood of the cox model with linear model and additionally a lasso penalty}
-#'     \item{\code{"sq_loss_lasso_gam"}}{ - M(y, v) = (v - y) ^ 2 with variables selected by lasso penalty and generalized additive model fit on the selected variables}
-#'     \item{\code{"logistic_loss_lasso_gam"}}{ - M(y, v) = y * log(1 + exp\{-v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
-#'     \item{\code{"sq_loss_gam"}}{ - M(y, v) = (v - y) ^ 2 with generalized additive model fit on all variables}
-#'     \item{\code{"logistic_loss_gam"}}{ - M(y, v) = y * log(1 + exp\{-v\}) with generalized additive model fit on all variables}
-#'     \item{\code{"sq_loss_gbm"}}{ - M(y, v) = (v - y) ^ 2 with gradient-boosted decision trees model}
-#'     \item{\code{"abs_loss_gbm"}}{ - M(y, v) = |v - y| with gradient-boosted decision trees model}
-#'     \item{\code{"logistic_loss_gbm"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with gradient-boosted decision trees model}
-#'     \item{\code{"cox_loss_gbm"}}{ - M corresponds to the negative partial likelihood of the cox model with gradient-boosted decision trees model}
+#'     \item{Continuous Outcomes}
+#'     \itemize{
+#'         \item{\code{"sq_loss_lasso"}}{ - M(y, v) = (v - y) ^ 2 with linear model and lasso penalty}
+#'         \item{\code{"owl_logistic_loss_lasso"}} { - M(y, v) = ylog(1 + exp\{-v\}) (method of Regularized Outcome Weighted Subgroup Identification)}
+#'         \item{\code{"owl_logistic_flip_loss_lasso"}} { - M(y, v) = |y|log(1 + exp\{-sign(y)v\})}
+#'         \item{\code{"owl_hinge_loss"}} { - M(y, v) = ymax(0, 1 - v) (method of Estimating individualized treatment rules using outcome weighted learning)}
+#'         \item{\code{"owl_hinge_flip_loss"}} { - M(y, v) = |y|max(0, 1 - sign(y)v) }
+#'         \item{\code{"sq_loss_lasso_gam"}}{ - M(y, v) = (v - y) ^ 2 with variables selected by lasso penalty and generalized additive model fit on the selected variables}
+#'         \item{\code{"sq_loss_gam"}}{ - M(y, v) = (v - y) ^ 2 with generalized additive model fit on all variables}
+#'         \item{\code{"owl_logistic_loss_gam"}} { - M(y, v) = ylog(1 + exp\{-v\}) with generalized additive model fit on all variables}
+#'         \item{\code{"owl_logistic_flip_loss_gam"}} { - M(y, v) = |y|log(1 + exp\{-sign(y)v\}) with generalized additive model fit on all variables}
+#'         \item{\code{"owl_logistic_loss_lasso_gam"}} { - M(y, v) = ylog(1 + exp\{-v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
+#'         \item{\code{"owl_logistic_flip_loss_lasso_gam"}} { - M(y, v) = |y|log(1 + exp\{-sign(y)v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
+#'         \item{\code{"sq_loss_gbm"}}{ - M(y, v) = (v - y) ^ 2 with gradient-boosted decision trees model}
+#'         \item{\code{"abs_loss_gbm"}}{ - M(y, v) = |v - y| with gradient-boosted decision trees model}
+#'     }
+#'     \item{Binary Outcomes}
+#'     \itemize{
+#'         \item{All losses for continuous outcomes can be used plus the following:}
+#'         \item{\code{"logistic_loss_lasso"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with with linear model and lasso penalty}
+#'         \item{\code{"logistic_loss_lasso_gam"}}{ - M(y, v) = y * log(1 + exp\{-v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
+#'         \item{\code{"logistic_loss_gam"}}{ - M(y, v) = y * log(1 + exp\{-v\}) with generalized additive model fit on all variables}
+#'         \item{\code{"logistic_loss_gbm"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with gradient-boosted decision trees model}
+#'     }
+#'     \item{Time-to-Event Outcomes}
+#'     \itemize{
+#'         \item{\code{"cox_loss_lasso"}}{ - M corresponds to the negative partial likelihood of the cox model with linear model and additionally a lasso penalty}
+#'         \item{\code{"cox_loss_gbm"}}{ - M corresponds to the negative partial likelihood of the cox model with gradient-boosted decision trees model}
+#'     }
 #' }
 #' @param method subgroup ID model type. Either the weighting or A-learning method of Chen et al, (2017)
 #' @param match.id a (character, factor, or integer) vector with length equal to the number of observations in \code{x} indicating using integers or
@@ -45,12 +63,21 @@
 #' fouth patient is a case and the fifth through seventh patients are matched with it, then the user should specify
 #' \code{match.id = c(1,1,1,2,2,2,2)} or \code{match.id = c(rep("Grp1", 3),rep("Grp2", 4)) }
 #' @param augment.func function which inputs the response \code{y}, the covariates \code{x}, and \code{trt} and outputs
-#' predicted values for the response using a model constructed with \code{x}. \code{augment.func()} can also be simply
+#' predicted values (on the link scale) for the response using a model constructed with \code{x}. \code{augment.func()} can also be simply
 #' a function of \code{x} and \code{y}. This function is used for efficiency augmentation.
 #' When the form of the augmentation function is correct, it can provide efficient estimation of the subgroups
 #' Example 1: \code{augment.func <- function(x, y) {lmod <- lm(y ~ x); return(fitted(lmod))}}
 #'
 #' Example 2: \code{augment.func <- function(x, y, trt) {lmod <- lm(y ~ x + trt); return(fitted(lmod))}}
+#'
+#' For binary and time-to-event outcomes, make sure that predictions are returned on the scale of the predictors
+#'
+#' Example 3:
+#'
+#' \code{augment.func <- function(x, y) {
+#'     bmod <- glm(y ~ x, family = binomial());
+#'     return(predict(bmod, type = "link"))}
+#'  }
 #' @param cutpoint numeric value for patients with benefit scores above which
 #' (or below which if \code{larger.outcome.better = FALSE})
 #' will be recommended to be in the treatment group
@@ -61,11 +88,16 @@
 #' @param retcall boolean value. if \code{TRUE} then the passed arguments will be saved. Do not set to \code{FALSE}
 #' if the \code{validate.subgroup()} function will later be used for your fitted subgroup model. Only set to \code{FALSE}
 #' if memory is limited as setting to \code{TRUE} saves the design matrix to the fitted object
-#' @param ... options to be passed to underlying fitting function. For all \code{loss} options with \code{lasso},
-#' this will be passed to \code{cv.glmnet} and for all \code{loss} options with \code{mcp} this will be passed
-#' to \code{cv.ncvreg}. Note that for all \code{loss} options that use \code{gam()} from the \code{mgcv} package,
+#' @param ... options to be passed to underlying fitting function. For all \code{loss} options with 'lasso',
+#' this will be passed to \code{\link[glmnet]{cv.glmnet}}. For all \code{loss} options with 'gam', this will
+#' be passed to \code{\link[mgcv]{gam}} from the \pkg{mgcv} package
+#' Note that for all \code{loss} options that use \code{gam()}
+#' from the \pkg{mgcv} package,
 #' the user cannot supply the \code{gam} argument \code{method} because it is also an argument of \code{fit.subgroup}, so
 #' instead, to change the \code{gam method} argument, supply \code{method.gam}, ie \code{method.gam = "REML"}.
+#'
+#' For all \code{loss} options with 'hinge', this will be passed to both \code{\link[personalized]{weighted.ksvm}} and
+#' \code{\link[kernlab]{ipop}} from the \pkg{kernlab} package
 #' @seealso \code{\link[personalized]{validate.subgroup}} for function which creates validation results for subgroup
 #' identification models, \code{\link[personalized]{predict.subgroup_fitted}} for a prediction function for fitted models
 #' from \code{fit.subgroup}, \code{\link[personalized]{plot.subgroup_fitted}} for a function which plots
@@ -75,17 +107,26 @@
 #' @references Chen, S., Tian, L., Cai, T. and Yu, M. (2017), A general statistical framework for subgroup identification
 #' and comparative treatment scoring. Biometrics. doi:10.1111/biom.12676 \url{http://onlinelibrary.wiley.com/doi/10.1111/biom.12676/abstract}
 #'
+#' Xu, Y., Yu, M., Zhao, Y. Q., Li, Q., Wang, S., & Shao, J. (2015),
+#'  Regularized outcome weighted subgroup identification for differential treatment effects. Biometrics, 71(3), 645-653.
+#'  doi: 10.1111/biom.12322 \url{http://onlinelibrary.wiley.com/doi/10.1111/biom.12322/full}
+#'
+#'  Zhao, Y., Zeng, D., Rush, A. J., & Kosorok, M. R. (2012),
+#'   Estimating individualized treatment rules using outcome weighted learning.
+#'   Journal of the American Statistical Association, 107(499), 1106-1118. doi: 10.1080/01621459.2012.695674
+#'   \url{http://dx.doi.org/10.1080/01621459.2012.695674}
+#'
 #' @examples
 #' library(personalized)
 #'
 #' set.seed(123)
-#' n.obs  <- 1000
-#' n.vars <- 50
+#' n.obs  <- 500
+#' n.vars <- 15
 #' x <- matrix(rnorm(n.obs * n.vars, sd = 3), n.obs, n.vars)
 #'
 #'
 #' # simulate non-randomized treatment
-#' xbetat   <- 0.5 + 0.5 * x[,21] - 0.5 * x[,41]
+#' xbetat   <- 0.5 + 0.5 * x[,7] - 0.5 * x[,9]
 #' trt.prob <- exp(xbetat) / (1 + exp(xbetat))
 #' trt01    <- rbinom(n.obs, 1, prob = trt.prob)
 #'
@@ -123,7 +164,7 @@
 #'                            trt = trt01,
 #'                            propensity.func = prop.func,
 #'                            loss   = "sq_loss_lasso",
-#'                            nfolds = 5)              # option for cv.glmnet
+#'                            nfolds = 10)              # option for cv.glmnet
 #'
 #' summary(subgrp.model)
 #'
@@ -165,10 +206,18 @@ fit.subgroup <- function(x,
                          loss       = c("sq_loss_lasso",
                                         "logistic_loss_lasso",
                                         "cox_loss_lasso",
+                                        "owl_logistic_loss_lasso",
+                                        "owl_logistic_flip_loss_lasso",
+                                        "owl_hinge_loss",
+                                        "owl_hinge_flip_loss",
                                         "sq_loss_lasso_gam",
                                         "logistic_loss_lasso_gam",
                                         "sq_loss_gam",
                                         "logistic_loss_gam",
+                                        "owl_logistic_loss_gam",
+                                        "owl_logistic_flip_loss_gam",
+                                        "owl_logistic_loss_lasso_gam",
+                                        "owl_logistic_flip_loss_lasso_gam",
                                         "sq_loss_gbm",
                                         "abs_loss_gbm",
                                         "logistic_loss_gbm",
@@ -258,7 +307,31 @@ fit.subgroup <- function(x,
             stop("augment.func() should only have either two arguments: 'x' and 'y', or three arguments:
                  'trt', 'x', and 'y'")
         }
-        }
+    }
+
+    ## this can be done with 'grepl("owl_", loss)' easily
+    ## but is left as below in case there are more loss options
+    ## in the future
+    augment.method <- switch(loss,
+                             "sq_loss_lasso"                    = "offset",
+                             "logistic_loss_lasso"              = "offset",
+                             "cox_loss_lasso"                   = "offset",
+                             "owl_logistic_loss_lasso"          = "adj",
+                             "owl_logistic_flip_loss_lasso"     = "adj",
+                             "owl_hinge_loss"                   = "adj",
+                             "owl_hinge_flip_loss"              = "adj",
+                             "sq_loss_lasso_gam"                = "offset",
+                             "logistic_loss_lasso_gam"          = "offset",
+                             "sq_loss_gam"                      = "offset",
+                             "logistic_loss_gam"                = "offset",
+                             "owl_logistic_loss_gam"            = "adj",
+                             "owl_logistic_flip_loss_gam"       = "adj",
+                             "owl_logistic_loss_lasso_gam"      = "adj",
+                             "owl_logistic_flip_loss_lasso_gam" = "adj",
+                             "sq_loss_gbm"                      = "offset",
+                             "abs_loss_gbm"                     = "offset",
+                             "logistic_loss_gbm"                = "offset",
+                             "cox_loss_gbm"                     = "offset")
 
     if (is.factor(trt))
     {
@@ -272,26 +345,52 @@ fit.subgroup <- function(x,
         n.trts      <- length(unique.trts)
     }
 
+    if (n.trts > 2 & grepl("owl_", loss) & grepl("hinge_", loss))
+    {
+        stop("OWL hinge loss not available for multiple treatments.")
+    }
+
+    if (grepl("owl_", loss))
+    {
+        if (method != "weighting")
+        {
+            warning("Only method = 'weighting' available for OWL-type losses; defaulting
+                    to 'weighting' method.")
+            method <- "weighting"
+        }
+    }
+
     if (n.trts < 2)           stop("trt must have at least 2 distinct levels")
     if (n.trts > dims[1] / 3) stop("trt must have no more than n.obs / 3 distinct levels")
 
     if (!is.null(reference.trt))
     {
-        if (!(reference.trt %in% unique.trts))
+        if (grepl("owl_", loss))
         {
-            stop("reference.trt must be one of the treatment levels")
+            warning("reference.trt specification not applicable for owl losses.")
+            reference.idx   <- 1L
+            comparison.idx  <- (1:n.trts)[-reference.idx]
+            comparison.trts <- unique.trts[-reference.idx]
+            reference.trt   <- unique.trts[reference.idx]
+        } else
+        {
+            if (!(reference.trt %in% unique.trts))
+            {
+                stop("reference.trt must be one of the treatment levels")
+            }
+
+            reference.idx   <- which(unique.trts == reference.trt)
+            comparison.idx  <- (1:n.trts)[-reference.idx]
+            comparison.trts <- unique.trts[-reference.idx]
         }
-
-        reference.idx   <- which(unique.trts == reference.trt)
-        comparison.idx  <- (1:n.trts)[-reference.idx]
-        comparison.trts <- unique.trts[-reference.idx]
-
+        refnull <- FALSE
     } else
     {
         reference.idx   <- 1L
         comparison.idx  <- (1:n.trts)[-reference.idx]
         comparison.trts <- unique.trts[-reference.idx]
         reference.trt   <- unique.trts[reference.idx]
+        refnull <- TRUE
     }
 
     if (n.trts > 2 & (grepl("_gbm", loss) | grepl("_gam", loss)) )
@@ -364,8 +463,9 @@ fit.subgroup <- function(x,
     }
 
 
+    extra.args <- NULL
     # check to make sure arguments of augment.func are correct
-    if (family == "gaussian" & !is.null(augment.func))
+    if (!is.null(augment.func))
     {
         B.x   <- unname(drop(augment.func(trt = trt, x = x, y = y)))
 
@@ -374,7 +474,15 @@ fit.subgroup <- function(x,
             stop("augment.func() should return the same number of predictions as observations in y")
         }
 
-        y.adj <- y - B.x
+        if (augment.method == "adj")
+        {
+            y.adj <- y - B.x
+        } else
+        {
+            y.adj      <- y
+            extra.args <- list(offset = B.x)
+        }
+
     } else
     {
         y.adj <- y
@@ -383,10 +491,10 @@ fit.subgroup <- function(x,
     # stop if augmentation function provided
     # for non-gaussian outcomes.
     # has not been developed yet
-    if (!is.null(augment.func) & family != "gaussian")
-    {
-        warning("Efficiency augmentation not available for non-continuous outcomes yet. No augmentation applied.")
-    }
+    #if (!is.null(augment.func) & family != "gaussian")
+    #{
+    #    warning("Efficiency augmentation not available for non-continuous outcomes yet. No augmentation applied.")
+    #}
 
     larger.outcome.better <- as.logical(larger.outcome.better[1])
     retcall               <- as.logical(retcall[1])
@@ -424,11 +532,14 @@ fit.subgroup <- function(x,
     }
 
     # compute propensity scores
-    if (is.null(match.id)) {
+    if (is.null(match.id) | length(propfunc.names) == 2)
+    {
         pi.x <- drop(propensity.func(x = x, trt = trt))
-    } else {
+    } else
+    {
         pi.x <- drop(propensity.func(x = x, trt = trt, match.id = match.id))
     }
+
 
     # make sure the resulting propensity scores are in the
     # acceptable range (ie 0-1)
@@ -477,41 +588,135 @@ fit.subgroup <- function(x,
             }
     }
 
-    # construct design matrix to be passed to fitting function
-    x.tilde <- create.design.matrix(x             = x,
-                                    pi.x          = pi.x,
-                                    trt           = trt,
-                                    method        = method,
-                                    reference.trt = reference.trt)
+    if (grepl("owl_", loss))
+    {
+        x.tilde <- cbind(1, x)
+    } else
+    {
+        # construct design matrix to be passed to fitting function
+        x.tilde <- create.design.matrix(x             = x,
+                                        pi.x          = pi.x,
+                                        trt           = trt,
+                                        method        = method,
+                                        reference.trt = reference.trt)
+    }
 
     # construct observation weight vector
     wts     <- create.weights(pi.x   = pi.x,
                               trt    = trt,
                               method = method)
 
-    if (n.trts > 2)
+
+    if (n.trts > 2 & !grepl("owl_", loss))
     {
         all.cnames <- numeric(ncol(x.tilde))
         len.names  <- length(vnames) + 1
         for (tr in 1:(n.trts - 1))
         {
             idx.cur <- ((len.names * (tr - 1)) + 1):(len.names * tr)
-            all.cnames[idx.cur] <- c( comparison.trts[tr],
+            if (comparison.trts[tr] != 1 & comparison.trts[tr] != "1")
+            {
+                trt.name.cur <- comparison.trts[tr]
+            } else
+            {
+                trt.name.cur <- "Trt1"
+            }
+            all.cnames[idx.cur] <- c( trt.name.cur,
                                       paste(vnames, 1:(n.trts - 1), sep = ".") )
         }
     } else
     {
-        all.cnames <- c( comparison.trts,
+        if (comparison.trts[1] != 1 & comparison.trts[1] != "1")
+        {
+            trt.name.cur <- comparison.trts[1]
+        } else
+        {
+            trt.name.cur <- "Trt1"
+        }
+        all.cnames <- c( trt.name.cur[1],
                          vnames )
+
+        if (grepl("owl_", loss) & n.trts > 2)
+        {
+            all.cnames[1] <- "Trt"
+        }
     }
+
 
     colnames(x.tilde) <- all.cnames
 
-    # identify correct fitting function and call it
-    fit_fun      <- paste0("fit_", loss)
-    fitted.model <- do.call(fit_fun, list(x = x.tilde, trt = trt, n.trts = n.trts,
-                                          y = y.adj, wts = wts, family = family,
-                                          match.id = match.id, ...))
+
+    # extra preparation needed for OWL-type losses
+    if (grepl("owl_", loss))
+    {
+        intercept <- FALSE
+        if (n.trts == 2)
+        {
+            family <- "binomial"
+        } else
+        {
+            family <- "multinomial"
+        }
+
+
+        if (grepl("logistic_", loss) & grepl("lasso", loss) & !grepl("gam$", loss))
+        {
+            fit_fun <- "fit_logistic_loss_lasso"
+
+            intercept <- TRUE
+        } else if (grepl("logistic_", loss) & grepl("gam$", loss))
+        {
+            if (grepl("lasso", loss))
+            {
+                fit_fun <- "fit_logistic_loss_lasso_gam"
+            } else
+            {
+                fit_fun <- "fit_logistic_loss_gam"
+            }
+        } else if (grepl("hinge_", loss))
+        {
+            fit_fun <- "fit_owl_hinge_loss"
+        }
+
+
+        if (grepl("flip_", loss))
+        {
+            if (n.trts == 2)
+            {
+                trt.y <- trt
+                y.wt  <- abs(y.adj)
+
+                # flip the trtmnt for negative response values
+                idx.flip.1 <- y.adj < 0 & trt == unique.trts[1]
+                idx.flip.2 <- y.adj < 0 & trt == unique.trts[2]
+                trt.y[idx.flip.1] <- unique.trts[2]
+                trt.y[idx.flip.2] <- unique.trts[1]
+            } else
+            {
+                stop("Flipping loss not available for multiple treatments scenarios.")
+            }
+        } else
+        {
+            trt.y <- trt
+            y.wt  <- y.adj - min(y.adj)
+        }
+
+        fitted.model <- do.call(fit_fun, c(list(x = x.tilde, trt = trt, n.trts = n.trts,
+                                                y = trt.y, wts = drop(wts) * drop(y.wt),
+                                                family = family, intercept = intercept,
+                                                match.id = match.id, ...), extra.args) )
+    } else
+    {
+        # identify correct fitting function and call it
+        fit_fun      <- paste0("fit_", loss)
+
+        fitted.model <- do.call(fit_fun, c(list(x = x.tilde, trt = trt, n.trts = n.trts,
+                                                y = y.adj, wts = wts, family = family,
+                                                match.id = match.id, ...), extra.args)  )
+    }
+
+
+    if (refnull) this.call$reference.trt <- NULL
 
 
     # save extra results
@@ -519,11 +724,14 @@ fit.subgroup <- function(x,
     fitted.model$family                <- family
     fitted.model$loss                  <- loss
     fitted.model$method                <- method
+    fitted.model$propensity.func       <- propensity.func
+    fitted.model$augment.func          <- augment.func
     fitted.model$larger.outcome.better <- larger.outcome.better
     fitted.model$var.names             <- vnames
     fitted.model$n.trts                <- n.trts
     fitted.model$comparison.trts       <- comparison.trts
     fitted.model$reference.trt         <- reference.trt
+    fitted.model$trts                  <- unique.trts
 
     fitted.model$benefit.scores        <- fitted.model$predict(x)
 
