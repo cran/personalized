@@ -90,6 +90,8 @@ summary(subgrp.model)
 ## family:  gaussian 
 ## loss:    sq_loss_lasso 
 ## method:  weighting 
+## propensity 
+## function: propensity.func 
 ## 
 ## Average Outcomes:
 ##                 Recommended Ctrl    Recommended Trt
@@ -103,7 +105,7 @@ summary(subgrp.model)
 ##        0%       25%       50%       75%      100% 
 ## -14.15602  -3.58120   0.04648   3.51676  14.78106 
 ## 
-## 9 out of 51 variables selected in total by the lasso (cross validation criterion).
+## 9 out of 50 variables selected in total by the lasso (cross validation criterion).
 ## 
 ##     Estimate
 ## Trt   0.3389
@@ -162,7 +164,8 @@ plot(val.model)
 Here we only display covariates with a significantly different mean value (at level 0.05)
 
 ```r
-summarize.subgroups(subgrp.model, p.value = 0.05)
+summ <- summarize.subgroups(subgrp.model)
+print(summ, p.value = 0.05)
 ```
 
 ```
@@ -193,6 +196,4 @@ Access help files for the main functions of the `personalized` package:
 ?validate.subgroup
 ```
 
-
-.
 

@@ -2,7 +2,7 @@ Package: personalized
 Type: Package
 Title: Estimation and Validation Methods for Subgroup Identification
         and Personalized Medicine
-Version: 0.1.1
+Version: 0.1.2
 Authors@R: c(
     person("Jared", "Huling",  role = c("aut", "cre"), email = "jaredhuling@gmail.com"),
     person("Aaron", "Potvien", role = "ctb")
@@ -19,13 +19,13 @@ Encoding: UTF-8
 LazyData: true
 Suggests: knitr, rmarkdown, testthat
 Imports: survival, kernlab, methods, foreach
-Depends: glmnet, mgcv, gbm, ggplot2, plotly
+Depends: glmnet (>= 2.0-13), mgcv, gbm, ggplot2, plotly
 RoxygenNote: 6.0.1
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2017-10-25 04:19:23 UTC; huling.7
+Packaged: 2017-11-28 03:34:01 UTC; huling.7
 Author: Jared Huling [aut, cre],
   Aaron Potvien [ctb]
 Maintainer: Jared Huling <jaredhuling@gmail.com>
 Repository: CRAN
-Date/Publication: 2017-10-25 07:23:29 UTC
+Date/Publication: 2017-11-28 09:38:47 UTC
