@@ -1,6 +1,7 @@
-f7b39ce46a2fc2fe26887203cd0f2924 *DESCRIPTION
-9e4b35619c21fd047e64a29e140918f1 *NAMESPACE
+cb7fa539f1684f4d8ea9e5d8c4b6a43d *DESCRIPTION
+393f49c72af9d910be647d109e0a4df2 *NAMESPACE
 032d826ea218d8c89c77ba22c2f2997c *R/check_overlap.R
+b8d35e35712ced0c4c09378836e816b1 *R/data.R
 5ca4ba674b940aaff51108b6c4985db1 *R/data_prep_utils.R
 1212752dec28c3a96fae1932158d1ccb *R/est_subgroup_effects.R
 7d50a3b6ee06f6c497b4c7260c1818c7 *R/fit_losses.R
@@ -14,12 +15,14 @@ e9dd74b2c03757fbbc2ad8eb601945c1 *R/print_subgroup.R
 489110d3dbcfbadb14d7e3d4e09af32a *R/summarize_subgroups.R
 6f9b6953ae384719cccc24d6dcc13dea *R/summary_subgroup.R
 20d79f4381609a8fc110b87947e69f6f *R/validate_subgroup.R
-2514026cd0357bef1c176655d7cda114 *R/weighted_svm.R
-30e683c2fbbddf30b09e3c37bbe9b540 *README.md
+8557f221bddbc305103d62a0261dc946 *R/weighted_svm.R
+620c9b795a60ef4d42226ff7fd0b8fcb *README.md
 f6475cb0b8d45230acc99ab059821db3 *build/vignette.rds
+9116fa6f751c0c2c1267d424cb8154b8 *data/LaLonde.rda
 c4c00dab0e900cf3b53163c128d010a2 *inst/doc/usage_of_the_personalized_package.R
 196b2fec05a444000f4de788a171d04d *inst/doc/usage_of_the_personalized_package.Rmd
-6de557c06d145cd4a11592d804ecab95 *inst/doc/usage_of_the_personalized_package.html
+36fbcaa5d465f9bd0b428b77826cc8b6 *inst/doc/usage_of_the_personalized_package.html
+9be91c25929ccaefab736ea27055e404 *man/LaLonde.Rd
 1d09ca40628a210cff75986877ab5224 *man/check.overlap.Rd
 b880e514b901746e8994a26f0f8b8d69 *man/fit.subgroup.Rd
 fb1dd7b1d398776cf9c8b38c8c2e83d7 *man/plot.Rd
