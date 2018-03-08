@@ -7,10 +7,10 @@
 \title{Plotting results for fitted subgroup identification models}
 \usage{
 \method{plot}{subgroup_fitted}(x, type = c("boxplot", "density",
-  "interaction"), avg.line = TRUE, ...)
+  "interaction", "conditional"), avg.line = TRUE, ...)
 
 \method{plot}{subgroup_validated}(x, type = c("boxplot", "density",
-  "interaction", "stability"), avg.line = TRUE, ...)
+  "interaction", "conditional", "stability"), avg.line = TRUE, ...)
 }
 \arguments{
 \item{x}{fitted object returned by \code{validate.subgroup()} or \code{fit.subgroup()} function}
@@ -21,7 +21,12 @@ across iterations of either the bootstrap or training/test re-fitting. For the l
 case the test results will be plotted. \code{"boxplot"} results in boxplots across all observations/iterations of either
 the bootstrap or training/test re-fitting. For the latter
 case the test results will be plotted. \code{"interaction"} creates an
-interaction plot for the different subgroups (crossing lines here means a meaningful subgroup)}
+interaction plot for the different subgroups (crossing lines here means a meaningful subgroup).
+\code{"conditional"} For subgroup_fitted objects, plots smoothed (via a GAM smoother) means of the outcomes as a function of the estimated benefit score
+separately for the treated and untreated groups. For subgroup_validated objects, boxplots of summary statistics
+within subgroups will be plotted as subgroups are defined by different cutoffs of the benefit scores.
+These cutoffs can be specified via the \code{benefit.score.quantiles} argument of
+\code{\link[personalized]{validate.subgroup}}.}
 
 \item{avg.line}{boolean value of whether or not to plot a line for the average
 value in addition to the density (only valid for \code{type = "density"})}
@@ -82,8 +87,11 @@ plot(subgrp.model, type = "boxplot")
 
 plot(subgrp.model, type = "interaction")
 
+plot(subgrp.model, type = "conditional")
+
 valmod <- validate.subgroup(subgrp.model, B = 3,
                           method = "training_test",
+                          benefit.score.quantiles = c(0.25, 0.5, 0.75),
                           train.fraction = 0.75)
 valmod$avg.results
 
@@ -91,6 +99,11 @@ plot(valmod)
 
 
 plot(valmod, type = "interaction")
+
+# see how summary statistics of subgroups change
+# when the subgroups are defined based on different cutoffs
+# (25th quantile of bene score, 50th, and 75th)
+plot(valmod, type = "conditional")
 
 # visualize the frequency of particular variables
 # of being selected across the resampling iterations with

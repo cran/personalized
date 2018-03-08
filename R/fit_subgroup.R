@@ -80,7 +80,10 @@
 #'  }
 #' @param cutpoint numeric value for patients with benefit scores above which
 #' (or below which if \code{larger.outcome.better = FALSE})
-#' will be recommended to be in the treatment group
+#' will be recommended to be in the treatment group. Can also set \code{cutpoint = "median"}, which will
+#' use the median value of the benefit scores as the cutpoint or can set specific quantile values via \code{"quantx"}
+#' where \code{"x"} is a number between 0 and 100 representing the quantile value; e.g. \code{cutpoint = "quant75"}
+#' will use the 75th perent upper quantile of the benefit scores as the quantile.
 #' @param larger.outcome.better boolean value of whether a larger outcome is better/preferable. Set to \code{TRUE}
 #' if a larger outcome is better/preferable and set to \code{FALSE} if a smaller outcome is better/preferable. Defaults to \code{TRUE}.
 #' @param reference.trt which treatment should be treated as the reference treatment. Defaults to the first level of \code{trt}
@@ -732,6 +735,9 @@ fit.subgroup <- function(x,
     fitted.model$comparison.trts       <- comparison.trts
     fitted.model$reference.trt         <- reference.trt
     fitted.model$trts                  <- unique.trts
+    fitted.model$trt.received          <- trt
+    fitted.model$pi.x                  <- pi.x
+    fitted.model$y                     <- y
 
     fitted.model$benefit.scores        <- fitted.model$predict(x)
 
@@ -743,7 +749,9 @@ fit.subgroup <- function(x,
     # subgroup treatment effects based on the
     # benefit scores and specified benefit score cutpoint
     fitted.model$subgroup.trt.effects <- subgroup.effects(fitted.model$benefit.scores,
-                                                          y, trt, cutpoint,
+                                                          y, trt,
+                                                          pi.x,
+                                                          cutpoint,
                                                           larger.outcome.better,
                                                           reference.trt = reference.trt)
 

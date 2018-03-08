@@ -7,9 +7,13 @@
 #' @param y The response vector
 #' @param trt treatment vector with each element equal to a 0 or a 1, with 1 indicating
 #'            treatment status is active.
+#' @param pi.x The propensity score for each observation
 #' @param cutpoint numeric value for patients with benefit scores above which
 #' (or below which if \code{larger.outcome.better = FALSE})
-#' will be recommended to be in the treatment group
+#' will be recommended to be in the treatment group. Can also set \code{cutpoint = "median"}, which will
+#' use the median value of the benefit scores as the cutpoint or can set specific quantile values via \code{"quantx"}
+#' where \code{"x"} is a number between 0 and 100 representing the quantile value; e.g. \code{cutpoint = "quant75"}
+#' will use the 75th perent upper quantile of the benefit scores as the quantile.
 #' @param larger.outcome.better boolean value of whether a larger outcome is better. Set to \code{TRUE}
 #' if a larger outcome is better and set to \code{FALSE} if a smaller outcome is better. Defaults to \code{TRUE}.
 #' @param reference.trt index of which treatment is the reference (in the case of multiple treatments).
@@ -18,9 +22,13 @@
 #' The default is the last level of \code{trt} if it is a factor.
 #' @seealso \code{\link[personalized]{fit.subgroup}} for function which fits subgroup identification models which generate
 #' benefit scores.
+#' @importFrom stats median weighted.mean
 #' @export
-subgroup.effects <- function(benefit.scores, y, trt, cutpoint = 0,
-                             larger.outcome.better = TRUE, reference.trt = NULL)
+subgroup.effects <- function(benefit.scores, y, trt,
+                             pi.x,
+                             cutpoint = 0,
+                             larger.outcome.better = TRUE,
+                             reference.trt = NULL)
 {
 
     benefit.scores <- drop(benefit.scores)
@@ -52,7 +60,7 @@ subgroup.effects <- function(benefit.scores, y, trt, cutpoint = 0,
     if (NROW(benefit.scores) != NROW(y))     stop("length of benefit.scores and y do not match")
     if (NROW(benefit.scores) != length(trt)) stop("length of benefit.scores and trt do not match")
 
-    cutpoint <- as.numeric(cutpoint[1])
+    cutpoint <- convert.cutpoint(cutpoint, benefit.scores)
 
     if (is.null(reference.trt) | n.trts == 2) # two trt options defaults to first as reference
     {
@@ -87,7 +95,6 @@ subgroup.effects <- function(benefit.scores, y, trt, cutpoint = 0,
 
             recommended.trt <- ifelse(rec.ref, reference.trt, comparison.trts[best.comp.idx])
         }
-
     } else
     {
         # meaning of larger vs smaller benefit score
@@ -100,8 +107,11 @@ subgroup.effects <- function(benefit.scores, y, trt, cutpoint = 0,
         {
             recommended.trt <- ifelse(benefit.scores < cutpoint, comparison.trts, reference.trt)
         }
-
     }
+
+    wts <- create.weights(pi.x   = pi.x,
+                          trt    = trt,
+                          method = "weighting")
 
     ## old way before multiple trtments::
     ##
@@ -186,7 +196,7 @@ subgroup.effects <- function(benefit.scores, y, trt, cutpoint = 0,
 
                 if (sum(idx.cur))
                 {
-                    survf <- survfit(y[idx.cur] ~ 1)
+                    survf <- survfit(y[idx.cur] ~ 1, weights = wts[idx.cur])
                     restricted.mean <- summary(survf)$table[5]
 
                     res.mat[t.receiv, t.recom] <- restricted.mean
@@ -199,7 +209,7 @@ subgroup.effects <- function(benefit.scores, y, trt, cutpoint = 0,
                             (trt != unique.trts[t.recom])
                         if (sum(idx.disagree))
                         {
-                            survf <- survfit(y[idx.disagree] ~ 1)
+                            survf <- survfit(y[idx.disagree] ~ 1, weights = wts[idx.disagree])
                             restricted.mean <- summary(survf)$table[5]
 
                             subgroup.effects[t.recom] <- res.mat[t.receiv, t.recom] - restricted.mean
@@ -223,7 +233,7 @@ subgroup.effects <- function(benefit.scores, y, trt, cutpoint = 0,
             for (t.receiv in 1:n.trts)
             {
                 idx.cur <- idx.list[[t.recom]][[t.receiv]]
-                res.mat[t.receiv, t.recom] <- mean(y[idx.cur])
+                res.mat[t.receiv, t.recom] <- weighted.mean(y[idx.cur], w = wts[idx.cur])
                 sample.size.mat[t.receiv, t.recom] <- sum(idx.cur)
 
                 if (t.recom == t.receiv)
@@ -231,7 +241,7 @@ subgroup.effects <- function(benefit.scores, y, trt, cutpoint = 0,
                     #idx.disagree <- Reduce("|", idx.list[[t.recom]][-t.receiv])
                     idx.disagree <- (recommended.trt == unique.trts[t.recom]) &
                         (trt != unique.trts[t.recom])
-                    subgroup.effects[t.recom] <- res.mat[t.receiv, t.recom] - mean(y[idx.disagree])
+                    subgroup.effects[t.recom] <- res.mat[t.receiv, t.recom] - weighted.mean(y[idx.disagree], w = wts[idx.disagree])
                 }
 
             }
@@ -244,7 +254,7 @@ subgroup.effects <- function(benefit.scores, y, trt, cutpoint = 0,
     {
         if (sum(idx.agree))
         {
-            survf.agree <- survfit(y[idx.agree] ~ 1)
+            survf.agree <- survfit(y[idx.agree] ~ 1, weights = wts[idx.agree])
             restricted.mean.agree <- summary(survf.agree)$table[5]
         } else
         {
@@ -253,7 +263,7 @@ subgroup.effects <- function(benefit.scores, y, trt, cutpoint = 0,
 
         if (sum(!idx.agree))
         {
-            survf.disagree <- survfit(y[!idx.agree] ~ 1)
+            survf.disagree <- survfit(y[!idx.agree] ~ 1, weights = wts[!idx.agree])
             restricted.mean.disagree <- summary(survf.disagree)$table[5]
         } else
         {
@@ -263,7 +273,8 @@ subgroup.effects <- function(benefit.scores, y, trt, cutpoint = 0,
         overall.subgroup.effect <- restricted.mean.agree - restricted.mean.disagree
     } else
     {
-        overall.subgroup.effect <- mean(y[idx.agree]) - mean(y[!idx.agree])
+        overall.subgroup.effect <- weighted.mean(y[idx.agree], w = wts[idx.agree]) -
+            weighted.mean(y[!idx.agree], w = wts[!idx.agree])
     }
 
     #res.mat[1,1] <- mean.11
