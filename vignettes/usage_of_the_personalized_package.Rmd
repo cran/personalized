@@ -10,6 +10,28 @@ output:
         toc_depth: 3
         number_sections: true
         self_contained: true
+preamble: >
+    \usepackage{amsmath,amssymb,amsfonts,bm,bbm,amsthm}
+    \usepackage{longtable}
+    \usepackage{booktabs}
+    \usepackage{bbm, bm}
+    \def\bsx {\boldsymbol x}
+    \def\bsX {\boldsymbol X}
+    \def\bsT {\boldsymbol T}
+    \def\bsbeta {\boldsymbol \beta}
+    \def\bsgamma {\boldsymbol \gamma}
+    \def\bsW {\boldsymbol W}
+    \def\bsy {\boldsymbol y}
+    \def\bsY {\boldsymbol Y}
+    \def\bsM {\boldsymbol M}
+    \def\bfx {\mathbf x}
+    \def\bfX {\mathbf X}
+    \def\bfT {\mathbf T}
+    \def\bfW {\mathbf W}
+    \def\bfy {\mathbf y}
+    \def\bfY {\mathbf Y}
+    \def\bfM {\mathbf M}
+    \def\bfU {\mathbf U}
 vignette: >
   %\VignetteIndexEntry{Usage of the Personalized Package}
   %\VignetteEngine{knitr::rmarkdown}
@@ -67,6 +89,39 @@ The choices of $f$ offered in the `personalized` package are varied. A familiar,
 For subgroup identification models with $f(X) = X^T\beta$, the `personalized` package also allows for variable selection. Instead of minimizing $L_W(f)$ or $L_A(f)$, we instead minimize a penalized version: $L_W(f) + \lambda||\beta||_1$ or $L_A(f) + \lambda||\beta||_1$.
 
 
+## Extension to multi-category treatments
+
+Often, multiple treatment options are available for patients instead of one treatment option and a control and the researcher may wish to understand which of all treatment options are the best for which patients. Extending the above methodology to multi-category treatment results in added complications, and in particular there is no straightforward extension of the A-learning method for multiple treatment settings. In the supplementary material of \citet{chen2017ageneral}, the weighting method was extended to estimate a benefit score corresponding to each level of a treatment subject to a sum-to-zero constraint for identifiability. 
+<!-- We assume that the expected outcome conditional on the covariate and treatment status information can be represented by  -->
+<!-- \begin{equation}\label{eqn:outcome_model_mult_trt} -->
+<!-- E(Y|\bfX, T) = g(\bfX) + \sum_{k = 1}^{K} 1(T = k)\Delta_k(\bfX), -->
+<!-- \end{equation} -->
+<!-- where $\sum_{k = 1}^{K} \Delta_k(\bfX) = 0$.   -->
+In particular, we are interested in estimating (the sign) of
+\begin{eqnarray}
+\Delta_{kl}(x) \equiv 
+\{ E(Y | T = k, { X} = { x}) - E(Y | T = l, X = { x}) \} \label{definition of Delta_kl}
+\end{eqnarray}
+If $\Delta_{kl}(x) > 0$, then treatment $k$ is preferable to treatment $l$ for a patient with $X = x$. For each patient, evaluation of all pairwise comparisons of the $\Delta_{kl}(x)$ indicates which treatment leads to the largest expected outcome. 
+The weighting estimators of the benefit scores are the minimizers of the following loss function:
+\begin{equation} \label{eqn:weighting_mult}
+L_W(f_1, \dots, f_{K}) = \frac{1}{n}\sum_{i = 1}^n\frac{\boldsymbol M(Y_i,  \sum_{k = 1}^{K}I(T_{i} = k)\times f_k(x_i) ) }{ { Pr(T = T_i | X = x_i)} },
+\end{equation}
+subject to $\sum_{k = 1}^{K}f_k(x_i) = 0$.
+Clearly when $K = 2$, this loss function is equivalent to (\ref{eqn:weighting}). 
+
+Estimation of the benefit scores in this model is still challenging without added modeling assumptions, as enforcing $\sum_{k = 1}^{K}f_k(x_i) = 0$ may not always be feasible using existing estimation routines. 
+However, if each $\Delta_{kl}(X)$ has a linear form, i.e. $\Delta_{kl}(X) = X^\top\boldsymbol \beta_k$ where $l$ represents a reference treatment group, estimation can then easily be fit into the same computational framework as for the simpler two treatment case by constructing an appropriate design matrix. Thus, for multiple treatments the \pkg{personalized} package is restricted to linear estimators of the benefit scores. For instructive purposes, consider a scenario with three treatment options, $A$, $B$, and $C$. Let $\boldsymbol X = ({\boldsymbol X}_A^\top, {\boldsymbol X}_B^\top, {\boldsymbol X}_C^\top )^\top$ be the design matrix for all patients, where each ${\boldsymbol X}_k^\top$ is the sub-design matrix of patients who received treatment $k$. Under $\Delta_{kl}(X) = X^\top\boldsymbol \beta_k$ with $l$ as the reference treatment, we can construct a new design matrix which can then be provided to existing estimation routines in order to minimize (\ref{eqn:weighting_mult}). With treatment $C$ as the reference treatment, the design matrix is constructed as
+$$
+\widetilde{{\boldsymbol X}} = \mbox{diag}(\boldsymbol J)\begin{pmatrix}
+{\boldsymbol X}_A & \boldsymbol 0 \\
+\boldsymbol 0 & {\boldsymbol X}_B \\
+{\boldsymbol X}_C & {\boldsymbol X}_C
+\end{pmatrix},
+$$
+where the $i$th element of $\boldsymbol J$ is $2I(T_i \neq C) - 1$ and the weight vector $\boldsymbol W$ is constructed with the $i$th element set to $1 / Pr(T = T_i | X = {x}_i)$. Furthermore denote $\widetilde{\boldsymbol \beta} = (\boldsymbol \beta_A^\top, \boldsymbol \beta_B^\top)^\top$. Hence $\widetilde{{\boldsymbol X}}^\top\widetilde{\boldsymbol \beta} = {\boldsymbol X}_A^\top\boldsymbol \beta_A + {\boldsymbol X}_B^\top\boldsymbol \beta_B - {\boldsymbol X}_C^\top(\boldsymbol \beta_A + \boldsymbol \beta_B)$, and thus the sum-to-zero constraints on the benefit scores hold by construction. 
+
+
 
 # Quick Usage Reference
 
@@ -121,7 +176,7 @@ check.overlap(x, trt, prop.func)
 
 We can see that our propensity scores have common support. 
 
-## Fitting Subgroup Identification Model
+## Fitting Subgroup Identification Models
 
 The next step is to choose and fit a subgroup identification model. In this example, the outcome is continuous, so we choose the squared error loss function. We also choose the model type (either the weighting or the A-learning method). The main function for fitting subgroup identification models is `fit.subgroup`. 
 Since there are many covariates, we choose a loss function with a lasso penalty to select variables. The underlying fitting function here is `cv.glmnet()`. We can pass to `fit.subgroup()` arguments of the `cv.glmnet()` function, such as `nfolds` for the number of cross validation folds. 
