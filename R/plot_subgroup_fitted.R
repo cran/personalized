@@ -87,7 +87,7 @@ plot.subgroup_fitted <- function(x,
         #res.2.plot[, 1] <- ifelse(trt.rec == 1, "Recommended Trt", "Recommended Ctrl")
         #res.2.plot[, 2] <- ifelse(x$call$trt == 1, "Received Trt", "Received Ctrl")
         res.2.plot[, 1] <- paste("Recommended", trt.rec)
-        res.2.plot[, 2] <- paste("Received", x$call$trt)
+        res.2.plot[, 2] <- as.factor(x$call$trt) #paste("Received", x$call$trt)
 
         if (class(x$call$y) == "Surv")
         {
@@ -102,9 +102,13 @@ plot.subgroup_fitted <- function(x,
 
     avg.res.2.plot <- data.frame(Recommended = rep(colnames(avg.res$avg.outcomes),
                                                    each = ncol(avg.res$avg.outcomes)),
-                                 Received    = rep(rownames(avg.res$avg.outcomes),
-                                                   ncol(avg.res$avg.outcomes)),
+                                 Received    = as.factor(gsub("^Received ", "", rep(rownames(avg.res$avg.outcomes),
+                                                   ncol(avg.res$avg.outcomes)))),
                                  Value       = as.vector(avg.res$avg.outcomes))
+
+    avg.res.2.plot.dens <- avg.res.2.plot
+
+    avg.res.2.plot$Recommended <- gsub("^Recommended ", "", avg.res.2.plot$Recommended)
 
     Recommended <- Received <- Value <- bs <- Outcome <- NULL
 
@@ -114,8 +118,8 @@ plot.subgroup_fitted <- function(x,
     {
         pl.obj <- ggplot(res.2.plot,
                          aes(x = Value, fill = Received)) +
-            geom_density(alpha = 0.65) +
-            geom_rug(aes(colour = Received), alpha = 0.85) +
+            geom_density(alpha = 0.65, na.rm = TRUE) +
+            geom_rug(aes(colour = Received), alpha = 0.85, na.rm = TRUE, sides = "l") +
             coord_flip() +
             facet_grid( ~ Recommended) +
             theme(legend.position = "bottom") +
@@ -123,10 +127,10 @@ plot.subgroup_fitted <- function(x,
             ggtitle("Individual Observations Among Subgroups")
         if (avg.line)
         {
-            pl.obj <- pl.obj + geom_vline(data = avg.res.2.plot,
+            pl.obj <- pl.obj + geom_vline(data = avg.res.2.plot.dens,
                                           aes(xintercept = Value),
                                           size = 1.25) +
-                geom_vline(data = avg.res.2.plot,
+                geom_vline(data = avg.res.2.plot.dens,
                            aes(xintercept = Value, colour = Received))
         }
     } else if (type == "boxplot")
@@ -136,7 +140,7 @@ plot.subgroup_fitted <- function(x,
             res.2.plot$Value <- as.factor(res.2.plot$Value)
             pl.obj <- ggplot(res.2.plot,
                              aes(x = Received, fill = factor(Value) )) +
-                geom_bar(position = "fill") +
+                geom_bar(position = "fill", na.rm = TRUE) +
                 facet_grid(~ Recommended) +
                 theme(legend.position = "bottom") +
                 ylab(outcome.lab) +
@@ -146,10 +150,10 @@ plot.subgroup_fitted <- function(x,
         {
             pl.obj <- ggplot(res.2.plot,
                              aes(x = Received, y = Value)) +
-                geom_boxplot(aes(fill = Received)) +
-                geom_rug(aes(colour = Received), alpha = 0.85) +
+                geom_boxplot(aes(fill = Received), na.rm = TRUE) +
+                geom_rug(aes(colour = Received), alpha = 0.85, na.rm = TRUE, sides = "l") +
                 facet_grid( ~ Recommended) +
-                theme(legend.position = "bottom") +
+                theme(legend.position = "none") +
                 ylab(outcome.lab) +
                 ggtitle("Individual Observations Among Subgroups")
         }
@@ -183,10 +187,11 @@ plot.subgroup_fitted <- function(x,
                              aes(x = bs, y = Outcome,
                                  group = factor(Received),
                                  color = factor(Received) )) +
-                geom_point() +
-                geom_smooth(method = "gam", method.args = list(family = "binomial")) +
+                geom_point(na.rm = TRUE) +
+                geom_smooth(method = "gam", method.args = list(family = "binomial"), na.rm = TRUE) +
                 theme(legend.position = "bottom") +
                 scale_color_discrete(name = "Received") +
+                xlab("Benefit Score") +
                 ggtitle("Individual Observations by Treatment Group")
         } else
         {
@@ -194,8 +199,8 @@ plot.subgroup_fitted <- function(x,
                              aes(x = bs, y = Outcome,
                                  group = factor(Received),
                                  color = factor(Received) )) +
-                geom_point() +
-                geom_smooth(method = "gam") +
+                geom_point(na.rm = TRUE) +
+                geom_smooth(method = "gam", na.rm = TRUE) +
                 theme(legend.position = "bottom") +
                 scale_color_discrete(name = "Received") +
                 ggtitle("Individual Observations by Treatment Group")
@@ -204,8 +209,8 @@ plot.subgroup_fitted <- function(x,
     {
         pl.obj <- ggplot(avg.res.2.plot,
                          aes(x = Recommended, y = Value, group = Received)) +
-            geom_line(aes(colour = Received), size = 1.25) +
-            geom_point(aes(colour = Received), size = 2) +
+            geom_line(aes(colour = Received), size = 1.25, na.rm = TRUE) +
+            geom_point(aes(colour = Received), size = 2, na.rm = TRUE) +
             theme(legend.position = "bottom") +
             scale_x_discrete(expand = c(0.25, 0.25)) +
             ylab(paste0("Average ", outcome.lab)) +

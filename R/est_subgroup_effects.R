@@ -22,7 +22,7 @@
 #' The default is the last level of \code{trt} if it is a factor.
 #' @seealso \code{\link[personalized]{fit.subgroup}} for function which fits subgroup identification models which generate
 #' benefit scores.
-#' @importFrom stats median weighted.mean
+#' @importFrom stats median weighted.mean poisson
 #' @export
 subgroup.effects <- function(benefit.scores, y, trt,
                              pi.x,
@@ -293,7 +293,8 @@ subgroup.effects <- function(benefit.scores, y, trt,
     #names(subgroup.effects) <- c("Trt  Effect Among Recommended Trt",
     #                             "Ctrl Effect Among Recommended Ctrl")
 
-    names(subgroup.effects) <- paste(unique.trts, "effect among recommended", unique.trts)
+    #names(subgroup.effects) <- paste(unique.trts, "effect among recommended", unique.trts)
+    names(subgroup.effects) <- paste0("Est of E[Y|T=", unique.trts, ",T=Recom]-", "E[Y|T=/=", unique.trts, ",T=Recom]")
 
     list(subgroup.effects = subgroup.effects, # subgroup-specific effects
                                               # (trt effect among those recommended trt and

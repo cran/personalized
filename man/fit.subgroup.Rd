@@ -4,16 +4,19 @@
 \alias{fit.subgroup}
 \title{Fitting subgroup identification models}
 \usage{
-fit.subgroup(x, y, trt, propensity.func = NULL, loss = c("sq_loss_lasso",
-  "logistic_loss_lasso", "cox_loss_lasso", "owl_logistic_loss_lasso",
+fit.subgroup(x, y, trt, propensity.func = NULL,
+  loss = c("sq_loss_lasso", "logistic_loss_lasso", "poisson_loss_lasso",
+  "cox_loss_lasso", "owl_logistic_loss_lasso",
   "owl_logistic_flip_loss_lasso", "owl_hinge_loss", "owl_hinge_flip_loss",
-  "sq_loss_lasso_gam", "logistic_loss_lasso_gam", "sq_loss_gam",
-  "logistic_loss_gam", "owl_logistic_loss_gam", "owl_logistic_flip_loss_gam",
+  "sq_loss_lasso_gam", "poisson_loss_lasso_gam", "logistic_loss_lasso_gam",
+  "sq_loss_gam", "poisson_loss_gam", "logistic_loss_gam",
+  "owl_logistic_loss_gam", "owl_logistic_flip_loss_gam",
   "owl_logistic_loss_lasso_gam", "owl_logistic_flip_loss_lasso_gam",
-  "sq_loss_gbm", "abs_loss_gbm", "logistic_loss_gbm", "cox_loss_gbm"),
-  method = c("weighting", "a_learning"), match.id = NULL,
-  augment.func = NULL, cutpoint = 0, larger.outcome.better = TRUE,
-  reference.trt = NULL, retcall = TRUE, ...)
+  "sq_loss_gbm", "poisson_loss_gbm", "logistic_loss_gbm", "cox_loss_gbm",  
+     "custom"), method = c("weighting", "a_learning"), match.id = NULL,
+  augment.func = NULL, fit.custom.loss = NULL, cutpoint = 0,
+  larger.outcome.better = TRUE, reference.trt = NULL, retcall = TRUE,
+  ...)
 }
 \arguments{
 \item{x}{The design matrix (not including intercept term)}
@@ -39,7 +42,7 @@ with nonparametric additive terms for each selected variable. \code{sq_loss_gam}
 allows for flexible estimation using machine learning and can be useful when the underlying treatment-covariate interaction
 is complex.
 \itemize{
-    \item{Continuous Outcomes}
+    \item{\strong{Continuous Outcomes}}
     \itemize{
         \item{\code{"sq_loss_lasso"}}{ - M(y, v) = (v - y) ^ 2 with linear model and lasso penalty}
         \item{\code{"owl_logistic_loss_lasso"}} { - M(y, v) = ylog(1 + exp\{-v\}) (method of Regularized Outcome Weighted Subgroup Identification)}
@@ -53,17 +56,24 @@ is complex.
         \item{\code{"owl_logistic_loss_lasso_gam"}} { - M(y, v) = ylog(1 + exp\{-v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
         \item{\code{"owl_logistic_flip_loss_lasso_gam"}} { - M(y, v) = |y|log(1 + exp\{-sign(y)v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
         \item{\code{"sq_loss_gbm"}}{ - M(y, v) = (v - y) ^ 2 with gradient-boosted decision trees model}
-        \item{\code{"abs_loss_gbm"}}{ - M(y, v) = |v - y| with gradient-boosted decision trees model}
     }
-    \item{Binary Outcomes}
+    \item{\strong{Binary Outcomes}}
     \itemize{
         \item{All losses for continuous outcomes can be used plus the following:}
         \item{\code{"logistic_loss_lasso"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with with linear model and lasso penalty}
-        \item{\code{"logistic_loss_lasso_gam"}}{ - M(y, v) = y * log(1 + exp\{-v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
-        \item{\code{"logistic_loss_gam"}}{ - M(y, v) = y * log(1 + exp\{-v\}) with generalized additive model fit on all variables}
+        \item{\code{"logistic_loss_lasso_gam"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with variables selected by lasso penalty and generalized additive model fit on the selected variables}
+        \item{\code{"logistic_loss_gam"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with generalized additive model fit on all variables}
         \item{\code{"logistic_loss_gbm"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with gradient-boosted decision trees model}
     }
-    \item{Time-to-Event Outcomes}
+    \item{\strong{Count Outcomes}}
+    \itemize{
+        \item{All losses for continuous outcomes can be used plus the following:}
+        \item{\code{"poisson_loss_lasso"}}{ - M(y, v) = -[yv - exp(v)] with with linear model and lasso penalty}
+        \item{\code{"poisson_loss_lasso_gam"}}{ - M(y, v) = -[yv - exp(v)] with variables selected by lasso penalty and generalized additive model fit on the selected variables}
+        \item{\code{"poisson_loss_gam"}}{ - M(y, v) = -[yv - exp(v)] with generalized additive model fit on all variables}
+        \item{\code{"poisson_loss_gbm"}}{ - M(y, v) = -[yv - exp(v)] with gradient-boosted decision trees model}
+    }
+    \item{\strong{Time-to-Event Outcomes}}
     \itemize{
         \item{\code{"cox_loss_lasso"}}{ - M corresponds to the negative partial likelihood of the cox model with linear model and additionally a lasso penalty}
         \item{\code{"cox_loss_gbm"}}{ - M corresponds to the negative partial likelihood of the cox model with gradient-boosted decision trees model}
@@ -85,18 +95,137 @@ fouth patient is a case and the fifth through seventh patients are matched with 
 \item{augment.func}{function which inputs the response \code{y}, the covariates \code{x}, and \code{trt} and outputs
 predicted values (on the link scale) for the response using a model constructed with \code{x}. \code{augment.func()} can also be simply
 a function of \code{x} and \code{y}. This function is used for efficiency augmentation.
-When the form of the augmentation function is correct, it can provide efficient estimation of the subgroups
+When the form of the augmentation function is correct, it can provide efficient estimation of the subgroups. Some examples of possible
+augmentation functions are:
+
 Example 1: \code{augment.func <- function(x, y) {lmod <- lm(y ~ x); return(fitted(lmod))}}
 
-Example 2: \code{augment.func <- function(x, y, trt) {lmod <- lm(y ~ x + trt); return(fitted(lmod))}}
+Example 2:
+\preformatted{
+augment.func <- function(x, y, trt) {
+    data <- data.frame(x, y, trt)
+    lmod <- lm(y ~ x * trt)
+    ## get predictions when trt = 1
+    data$trt <- 1
+    preds_1  <- predict(lmod, data)
+
+    ## get predictions when trt = -1
+    data$trt <- -1
+    preds_n1 <- predict(lmod, data)
+
+    ## return predictions averaged over trt
+    return(0.5 * (preds_1 + preds_n1))
+}
+}
 
 For binary and time-to-event outcomes, make sure that predictions are returned on the scale of the predictors
 
 Example 3:
+\preformatted{augment.func <- function(x, y) {
+        bmod <- glm(y ~ x, family = binomial())
+        return(predict(bmod, type = "link"))
+    }
+ }}
 
-\code{augment.func <- function(x, y) {
-    bmod <- glm(y ~ x, family = binomial());
-    return(predict(bmod, type = "link"))}
+\item{fit.custom.loss}{A function which \emph{minimizes} a user-specified
+custom loss function M(y,v) to be used in model fitting.
+If provided, \code{fit.custom.loss} should take the modified
+design matrix (which includes an intercept term)
+as an argument and the responses and optimize a
+custom weighted loss function.
+
+The loss function \eqn{M(y, v)} to be minimized \strong{MUST} meet
+the following two criteria:
+\enumerate{
+\item{}{ \eqn{D_M(y, v) = \partial M(y, v)/\partial v } must be increasing in v for each fixed y. \eqn{D_M(y, v)} is the partial
+derivative of the loss function M(y, v) with respect to v}
+\item{}{ \eqn{D_M(y, 0)} is monotone in y}
+}
+An example of a valid loss function is \eqn{M(y, v) = (y - v)^2}. In this case \eqn{D_M(y, v) = -2(y - v)}.
+See Chen et al. (2017) for more details on the
+restrictions on the loss function \eqn{M(y, v)}.
+
+The provided function \strong{MUST} return a list with the following elements:
+\itemize{
+\item{\code{predict}}{ a function that inputs a design matrix and a 'type' argument for the type of predictions and outputs
+a vector of predictions on the scale of the linear predictor. Note that the matrix provided to 'fit.custom.loss'
+has a column appended to the first column of \code{x} corresponding to the treatment main effect.
+Thus, the prediction function should deal with this,
+e.g. \code{predict(model, cbind(1, x))}}
+\item{\code{model} }{ a fitted model object returned by the underlying fitting function}
+\item{\code{coefficients}}{ if the underlying fitting function yields a vector of coefficient estimates, they should be provided here}
+}
+
+The provided function \strong{MUST} be a function
+with the following arguments:
+\enumerate{
+\item{\code{x}}{ design matrix}
+\item{\code{y}}{ vector of responses}
+\item{\code{weights}}{ vector for observations weights. The underlying loss function \strong{MUST} have samples weighted according
+to this vector. See below example}
+\item{\code{...}}{ additional arguments passed via '\code{...}'. This can be used so that users can specify more arguments to the
+underlying fitting function if so desired.}
+}
+The provided function can also optionally take the following arguments:
+\itemize{
+\item{\code{match.id}}{ vector of case/control cluster IDs. This is useful if cross validation is used in the underlying fitting function
+in which case it is advisable to sample whole clusters randomly instead of individual observations.}
+\item{\code{offset}}{ if efficiency augmentation is used, the predictions from the outcome model from \code{augment.func}
+will be provided via the \code{offset} argument, which can be used as an offset in the underlying fitting function
+as a means of incorporating the efficiency augmentation model's predictions}
+\item{\code{trt}}{ vector of treatment statuses}
+\item{\code{family}}{ family of outcome}
+\item{\code{n.trts}}{ numer of treatment levels. Can be useful if there are more than 2 treatment levels}
+}
+
+ Example 1: Here we minimize \eqn{M(y, v) = (y - v)^2}
+ \preformatted{
+ fit.custom.loss <- function(x, y, weights, ...) {
+     df <- data.frame(y = y, x)
+
+     # minimize squared error loss with NO lasso penalty
+     lmf <- lm(y ~ x - 1, weights = weights,
+               data = df, ...)
+
+     # save coefficients
+     cfs = coef(lmf)
+
+     # create prediction function. Notice
+     # how a column of 1's is appended
+     # to ensure treatment main effects are included
+     # in predictions
+     prd = function(x, type = "response")
+     {
+         dfte <- cbind(1, x)
+         colnames(dfte) <- names(cfs)
+         predict(lmf, data.frame(dfte))
+     }
+     # return lost of required components
+     list(predict = prd, model = lmf, coefficients = cfs)
+ }
+ }
+
+ Example 2: \eqn{M(y, v) = y\exp(-v)}
+ \preformatted{
+ fit.expo.loss <- function(x, y, weights, ...)
+ {
+     ## define loss function to be minimized
+     expo.loss <- function(beta, x, y, weights) {
+         sum(weights * y * exp(-drop(tcrossprod(x, t(beta) )))
+     }
+
+     # use optim() to minimize loss function
+     opt <- optim(rep(0, NCOL(x)), fn = expo.loss, x = x, y = y, weights = weights)
+
+     coefs <- opt$par
+
+     pred <- function(x, type = "response") {
+         tcrossprod(cbind(1, x), t(coefs))
+     }
+
+     # return list of required components
+     list(predict = pred, model = opt, coefficients = coefs)
+ }
  }}
 
 \item{cutpoint}{numeric value for patients with benefit scores above which
@@ -127,6 +256,38 @@ instead, to change the \code{gam method} argument, supply \code{method.gam}, ie 
 For all \code{loss} options with 'hinge', this will be passed to both \code{\link[personalized]{weighted.ksvm}} and
 \code{\link[kernlab]{ipop}} from the \pkg{kernlab} package}
 }
+\value{
+An object of class \code{"subgroup_fitted"}.
+\item{predict}{A function that returns predictions of the covariate-conditional treatment effects }
+\item{model}{An object returned by the underlying fitting function used. For example, if the lasso use used to fit
+the underlying subgroup identification model, this will be an object returned by \code{cv.glmnet}. }
+\item{coefficients}{ If the underlying subgroup identification model is parametric, \code{coefficients} will contain
+the estimated coefficients of the model. }
+\item{call}{The call that produced the returned object. If \code{retcall = TRUE}, this will contain all objects
+supplied to \code{fit.subgroup()}}
+\item{family}{The family corresponding to the outcome provided}
+\item{loss}{The loss function used}
+\item{method}{The method used (either weighting or A-learning)}
+\item{propensity.func}{The propensity score function used}
+\item{larger.outcome.better}{If larger outcomes are preferred for this model}
+\item{cutpoint}{Benefit score cutoff value used for determining subgroups}
+\item{var.names}{The names of all variables used}
+\item{n.trts}{The number of treatment levels}
+\item{comparison.trts}{All treatment levels other than the reference level}
+\item{reference.trt}{The reference level for the treatment. This should usually be the control group/level}
+\item{trts}{All treatment levels}
+\item{trt.received}{The vector of treatment assignments}
+\item{pi.x}{A vector of propensity scores}
+\item{y}{A vector of outcomes}
+\item{benefit.scores}{A vector of conditional treatment effects, i.e. benefit scores}
+\item{recommended.trts}{A vector of treatment recommendations (i.e. for each patient,
+which treatment results in the best expected potential outcomes)}
+\item{subgroup.trt.effects}{(Biased) estimates of the conditional treatment effects
+and conditional outcomes. These are essentially just empirical averages within
+different combinations of treatment assignments and treatment recommendations}
+\item{individual.trt.effects}{estimates of the individual treatment effects as returned by
+\code{\link[personalized]{treat.effects}}}
+}
 \description{
 Fits subgroup identification model class of Chen, et al (2017)
 }
@@ -147,6 +308,7 @@ trt01    <- rbinom(n.obs, 1, prob = trt.prob)
 trt      <- 2 * trt01 - 1
 
 # simulate response
+# delta below drives treatment effect heterogeneity
 delta <- 2 * (0.5 + x[,2] - x[,3] - x[,11] + x[,1] * x[,12] )
 xbeta <- x[,1] + x[,11] - 2 * x[,12]^2 + x[,13] + 0.5 * x[,15] ^ 2
 xbeta <- xbeta + delta * trt
@@ -156,6 +318,9 @@ y <- drop(xbeta) + rnorm(n.obs, sd = 2)
 
 # binary outcomes
 y.binary <- 1 * (xbeta + rnorm(n.obs, sd = 2) > 0 )
+
+# count outcomes
+y.count <- round(abs(xbeta + rnorm(n.obs, sd = 2)))
 
 # time-to-event outcomes
 surv.time <- exp(-20 - xbeta + rnorm(n.obs, sd = 1))
@@ -174,6 +339,10 @@ prop.func <- function(x, trt)
     pi.x
 }
 
+
+####################  Continuous outcomes ################################
+
+
 subgrp.model <- fit.subgroup(x = x, y = y,
                            trt = trt01,
                            propensity.func = prop.func,
@@ -181,6 +350,10 @@ subgrp.model <- fit.subgroup(x = x, y = y,
                            nfolds = 10)              # option for cv.glmnet
 
 summary(subgrp.model)
+
+# estimates of the individual-specific
+# treatment effect estimates:
+subgrp.model$individual.trt.effects
 
 # fit lasso + gam model with REML option for gam
 
@@ -193,6 +366,43 @@ subgrp.modelg <- fit.subgroup(x = x, y = y,
 
 subgrp.modelg
 
+####################  Using an augmentation function #####################
+## augmentation funcions involve modeling the conditional mean E[Y|T, X]
+## and returning predictions that are averaged over the treatment values
+## return <- 1/2 * (hat{E}[Y|T=1, X] + hat{E}[Y|T=-1, X])
+##########################################################################
+
+augment.func <- function(x, y, trt) {
+    data <- data.frame(x, y, trt)
+    xm <- model.matrix(y~trt*x-1, data = data)
+
+    lmod <- cv.glmnet(y = y, x = xm)
+    ## get predictions when trt = 1
+    data$trt <- 1
+    xm <- model.matrix(y~trt*x-1, data = data)
+    preds_1  <- predict(lmod, xm, s = "lambda.min")
+
+    ## get predictions when trt = -1
+    data$trt <- -1
+    xm <- model.matrix(y~trt*x-1, data = data)
+    preds_n1  <- predict(lmod, xm, s = "lambda.min")
+
+    ## return predictions averaged over trt
+    return(0.5 * (preds_1 + preds_n1))
+}
+
+subgrp.model.aug <- fit.subgroup(x = x, y = y,
+                           trt = trt01,
+                           propensity.func = prop.func,
+                           augment.func    = augment.func,
+                           loss   = "sq_loss_lasso",
+                           nfolds = 10)              # option for cv.glmnet
+
+summary(subgrp.model.aug)
+
+####################  Binary outcomes ####################################
+
+# use logistic loss for binary outcomes
 subgrp.model.bin <- fit.subgroup(x = x, y = y.binary,
                            trt = trt01,
                            propensity.func = prop.func,
@@ -202,6 +412,22 @@ subgrp.model.bin <- fit.subgroup(x = x, y = y.binary,
 
 subgrp.model.bin
 
+
+####################  Count outcomes #####################################
+
+# use poisson loss for count/poisson outcomes
+subgrp.model.poisson <- fit.subgroup(x = x, y = y.count,
+                           trt = trt01,
+                           propensity.func = prop.func,
+                           loss   = "poisson_loss_lasso",
+                           type.measure = "mse",    # option for cv.glmnet
+                           nfolds = 5)              # option for cv.glmnet
+
+subgrp.model.poisson
+
+
+####################  Time-to-event outcomes #############################
+
 library(survival)
 subgrp.model.cox <- fit.subgroup(x = x, y = Surv(y.time.to.event, status),
                            trt = trt01,
@@ -210,6 +436,73 @@ subgrp.model.cox <- fit.subgroup(x = x, y = Surv(y.time.to.event, status),
                            nfolds = 5)              # option for cv.glmnet
 
 subgrp.model.cox
+
+
+####################  Using custom loss functions ########################
+
+## Use custom loss function for binary outcomes
+
+fit.custom.loss.bin <- function(x, y, weights, offset, ...) {
+    df <- data.frame(y = y, x)
+
+    # minimize logistic loss with NO lasso penalty
+    # with allowance for efficiency augmentation
+    glmf <- glm(y ~ x - 1, weights = weights,
+                offset = offset, # offset term allows for efficiency augmentation
+                family = binomial(), ...)
+
+    # save coefficients
+    cfs = coef(glmf)
+
+    # create prediction function.
+    prd = function(x, type = "response") {
+         dfte <- cbind(1, x)
+         colnames(dfte) <- names(cfs)
+         ## predictions must be returned on the scale
+         ## of the linear predictor
+         predict(glmf, data.frame(dfte), type = "link")
+    }
+    # return lost of required components
+    list(predict = prd, model = glmf, coefficients = cfs)
+}
+
+subgrp.model.bin.cust <- fit.subgroup(x = x, y = y.binary,
+                                 trt = trt01,
+                                 propensity.func = prop.func,
+                                 fit.custom.loss = fit.custom.loss.bin)
+
+subgrp.model.bin.cust
+
+
+## try exponential loss for
+## positive outcomes
+
+fit.expo.loss <- function(x, y, weights, ...)
+{
+    expo.loss <- function(beta, x, y, weights) {
+        sum(weights * y * exp(-drop(x \%*\% beta)))
+    }
+
+    # use optim() to minimize loss function
+    opt <- optim(rep(0, NCOL(x)), fn = expo.loss, x = x, y = y, weights = weights)
+
+    coefs <- opt$par
+
+    pred <- function(x, type = "response") {
+        tcrossprod(cbind(1, x), t(coefs))
+    }
+
+    # return list of required components
+    list(predict = pred, model = opt, coefficients = coefs)
+}
+
+# use exponential loss for positive outcomes
+subgrp.model.expo <- fit.subgroup(x = x, y = y.count,
+                                  trt = trt01,
+                                  propensity.func = prop.func,
+                                  fit.custom.loss = fit.expo.loss)
+
+subgrp.model.expo
 
 
 }

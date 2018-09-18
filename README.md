@@ -91,37 +91,56 @@ subgrp.model <- fit.subgroup(x = x, y = y,
 summary(subgrp.model)
 ```
 
-    ## family:  gaussian 
-    ## loss:    sq_loss_lasso 
-    ## method:  weighting 
+    ## family:    gaussian 
+    ## loss:      sq_loss_lasso 
+    ## method:    weighting 
+    ## cutpoint:  0 
     ## propensity 
-    ## function: propensity.func 
+    ## function:  propensity.func 
+    ## 
+    ## benefit score: f(x), 
+    ## Trt recomm = Trt*I(f(x)>c)+Ctrl*I(f(x)<=c) where c is 'cutpoint'
     ## 
     ## Average Outcomes:
     ##                 Recommended Ctrl    Recommended Trt
     ## Received Ctrl  -4.2429 (n = 117) -21.9576 (n = 114)
     ## Received Trt  -23.6902 (n = 132)  -6.7605 (n = 137)
     ## 
-    ## Ctrl effect among recommended Ctrl   Trt effect among recommended Trt 
-    ##                  19.4474 (n = 249)                  15.1972 (n = 251) 
+    ## Treatment effects conditional on subgroups:
+    ## Est of E[Y|T=Ctrl,T=Recom]-E[Y|T=/=Ctrl,T=Recom] 
+    ##                                19.4474 (n = 249) 
+    ##   Est of E[Y|T=Trt,T=Recom]-E[Y|T=/=Trt,T=Recom] 
+    ##                                15.1972 (n = 251) 
     ## 
-    ## Benefit score quantiles: 
+    ## NOTE: The above average outcomes are biased estimates of
+    ##       the expected outcomes conditional on subgroups. 
+    ##       Use 'validate.subgroup()' to obtain unbiased estimates.
+    ## 
+    ## ---------------------------------------------------
+    ## 
+    ## Benefit score quantiles (f(X) for Trt vs Ctrl): 
     ##        0%       25%       50%       75%      100% 
     ## -14.15602  -3.58120   0.04648   3.51676  14.78106 
     ## 
-    ## 9 out of 50 variables selected in total by the lasso (cross validation criterion).
+    ## ---------------------------------------------------
     ## 
-    ##     Estimate
-    ## Trt   0.3389
-    ## V2    1.3120
-    ## V11  -0.8576
-    ## V17  -0.3681
-    ## V32   0.2421
-    ## V35   0.3570
-    ## V39  -0.1401
-    ## V40   0.0275
-    ## V45   0.0945
-    ## V50  -0.0422
+    ## Summary of individual treatment effects: 
+    ## E[Y|T=Trt, X] - E[Y|T=Ctrl, X]
+    ## 
+    ##      Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+    ## -28.31203  -7.16240   0.09296   0.27303   7.03352  29.56212 
+    ## 
+    ## ---------------------------------------------------
+    ## 
+    ## 9 out of 50 interactions selected in total by the lasso (cross validation criterion).
+    ## 
+    ## The first estimate is the treatment main effect, which is always selected. 
+    ## Any other variables selected represent treatment-covariate interactions.
+    ## 
+    ##             Trt    V2     V11     V17    V32   V35     V39    V40    V45
+    ## Estimate 0.3389 1.312 -0.8576 -0.3681 0.2421 0.357 -0.1401 0.0275 0.0945
+    ##              V50
+    ## Estimate -0.0422
 
 ### Use repeated train and test splitting to estimate subgroup treatment effects:
 
@@ -142,18 +161,26 @@ print(val.model, digits = 2, sample.pct = TRUE)
     ## method:  weighting 
     ## 
     ## validation method:  training_test_replication 
-    ## iterations:  100 
+    ## cutpoint:           0 
+    ## replications:       100 
+    ## 
+    ## benefit score: f(x), 
+    ## Trt recomm = Trt*I(f(x)>c)+Ctrl*I(f(x)<=c) where c is 'cutpoint'
     ## 
     ## Average Test Set Outcomes:
     ##                         Recommended Ctrl            Recommended Trt
     ## Received Ctrl -10.85 (SE = 7.88, 20.74%)  -18.64 (SE = 6.5, 25.81%)
     ## Received Trt   -15.81 (SE = 5.9, 24.18%) -15.36 (SE = 9.02, 29.26%)
     ## 
-    ## Ctrl effect among recommended Ctrl   Trt effect among recommended Trt 
-    ##          4.97 (SE = 11.23, 44.93%)          3.27 (SE = 11.73, 55.07%) 
+    ## Treatment effects conditional on subgroups:
+    ## Est of E[Y|T=Ctrl,T=Recom]-E[Y|T=/=Ctrl,T=Recom] 
+    ##                        4.97 (SE = 11.23, 44.93%) 
+    ##   Est of E[Y|T=Trt,T=Recom]-E[Y|T=/=Trt,T=Recom] 
+    ##                        3.27 (SE = 11.73, 55.07%) 
     ## 
-    ## Overall Subgroup Effect 
-    ##         1.2 (SE = 8.77)
+    ## Est of 
+    ## E[Y|Trt received = Trt recom] - E[Y|Trt received =/= Trt recom]:                
+    ## 1.2 (SE = 8.77)
 
 Visualize subgroup-specific treatment effect estimates across
 training/testing

@@ -136,10 +136,16 @@ plotCompare <- function(...,
 
         avg.res.2.plot <- data.frame(Recommended = rep(colnames(avg.res$avg.outcomes),
                                                        each = ncol(avg.res$avg.outcomes)),
-                                     Received    = rep(rownames(avg.res$avg.outcomes),
-                                                       ncol(avg.res$avg.outcomes)),
+                                     Received    = gsub("^Received ", "", rep(rownames(avg.res$avg.outcomes),
+                                                       ncol(avg.res$avg.outcomes))),
                                      Value       = as.vector(avg.res$avg.outcomes),
                                      Model       = obj.names[l])
+
+        avg.res.2.plot$Received <- as.factor(avg.res.2.plot$Received)
+
+        avg.res.2.plot.dens <- avg.res.2.plot
+
+        avg.res.2.plot$Recommended <- gsub("^Recommended ", "", avg.res.2.plot$Recommended)
 
         avg.list[[l]] <- avg.res.2.plot
 
@@ -168,7 +174,7 @@ plotCompare <- function(...,
                     #res.2.plot[, 1] <- ifelse(trt.rec == 1, "Recommended Trt", "Recommended Ctrl")
                     #res.2.plot[, 2] <- ifelse(x$call$trt == 1, "Received Trt", "Received Ctrl")
                     res.2.plot[, 1] <- paste("Recommended", trt.rec)
-                    res.2.plot[, 2] <- paste("Received", list.obj[[l]]$call$trt)
+                    res.2.plot[, 2] <- list.obj[[l]]$call$trt #paste("Received", list.obj[[l]]$call$trt)
 
                     if (class(list.obj[[l]]$call$y) == "Surv")
                     {
@@ -189,7 +195,7 @@ plotCompare <- function(...,
                     #res.2.plot[, 1] <- ifelse(trt.rec == 1, "Recommended Trt", "Recommended Ctrl")
                     #res.2.plot[, 2] <- ifelse(x$call$trt == 1, "Received Trt", "Received Ctrl")
                     res.2.plot[, 1] <- benefit.scores
-                    res.2.plot[, 2] <- paste("Received", list.obj[[l]]$call$trt)
+                    res.2.plot[, 2] <- list.obj[[l]]$call$trt #paste("Received", list.obj[[l]]$call$trt)
 
                     if (class(list.obj[[l]]$call$y) == "Surv")
                     {
@@ -219,8 +225,8 @@ plotCompare <- function(...,
                         cur.idx <- c(((b - 1) * n.entries + 1):(b * n.entries))
                         res.2.plot[cur.idx, 1] <- rep(colnames(boot.res[b,,]),
                                                       each = ncol(boot.res[b,,]))
-                        res.2.plot[cur.idx, 2] <- rep(rownames(boot.res[b,,]),
-                                                      ncol(boot.res[b,,]))
+                        res.2.plot[cur.idx, 2] <- gsub("^Received ", "", rep(rownames(boot.res[b,,]),
+                                                      ncol(boot.res[b,,])))
                         res.2.plot[cur.idx, 3] <- as.vector(boot.res[b,,])
                     }
                 } else
@@ -241,8 +247,8 @@ plotCompare <- function(...,
                             cur.idx <- c(((b - 1) * n.entries + 1):(b * n.entries)) + ct
                             res.2.plot[cur.idx, 1] <- rep(colnames(res.cur.mat),
                                                           each = ncol(res.cur.mat))
-                            res.2.plot[cur.idx, 2] <- rep(rownames(res.cur.mat),
-                                                          ncol(res.cur.mat))
+                            res.2.plot[cur.idx, 2] <- gsub("^Received ", "", rep(rownames(res.cur.mat),
+                                                          ncol(res.cur.mat)))
                             res.2.plot[cur.idx, 3] <- as.vector(res.cur.mat)
                             res.2.plot[cur.idx, 4] <- quantile.names[q]
 
@@ -252,6 +258,7 @@ plotCompare <- function(...,
                 }
 
             }
+            res.2.plot$Received <- as.factor(res.2.plot$Received)
 
             res.2.plot$Model <- obj.names[l]
             dat.list[[l]] <- res.2.plot
@@ -269,18 +276,18 @@ plotCompare <- function(...,
     {
         pl.obj <- ggplot(res.2.plot,
                          aes(x = Value, fill = Received)) +
-            geom_density(alpha = 0.65) +
-            geom_rug(aes(colour = Received), alpha = 0.85) +
+            geom_density(alpha = 0.65, na.rm = TRUE) +
+            geom_rug(aes(colour = Received), alpha = 0.85, sides = "l", na.rm = TRUE) +
             coord_flip() +
             facet_grid(Recommended ~ Model) +
             theme(legend.position = "bottom") +
             xlab("Outcome")
         if (avg.line)
         {
-            pl.obj <- pl.obj + geom_vline(data = avg.res.2.plot,
+            pl.obj <- pl.obj + geom_vline(data = avg.res.2.plot.dens,
                                           aes(xintercept = Value),
                                           size = 1.25) +
-                geom_vline(data = avg.res.2.plot,
+                geom_vline(data = avg.res.2.plot.dens,
                            aes(xintercept = Value, colour = Received))
         }
     } else if (type == "conditional")
@@ -293,8 +300,8 @@ plotCompare <- function(...,
                                  aes(x = bs, y = Outcome,
                                      group = factor(Received),
                                      color = factor(Received) )) +
-                    geom_point() +
-                    geom_smooth(method = "gam", method.args = list(family = "binomial")) +
+                    geom_point(na.rm = TRUE) +
+                    geom_smooth(method = "gam", method.args = list(family = "binomial"), na.rm = TRUE) +
                     facet_grid( ~ Model) +
                     theme(legend.position = "bottom") +
                     scale_color_discrete(name = "Received") +
@@ -305,8 +312,8 @@ plotCompare <- function(...,
                                  aes(x = bs, y = Outcome,
                                      group = factor(Received),
                                      color = factor(Received) )) +
-                    geom_point() +
-                    geom_smooth(method = "gam") +
+                    geom_point(na.rm = TRUE) +
+                    geom_smooth(method = "gam", na.rm = TRUE) +
                     facet_grid( ~ Model) +
                     theme(legend.position = "bottom") +
                     scale_color_discrete(name = "Received") +
@@ -316,10 +323,10 @@ plotCompare <- function(...,
         {
             pl.obj <- ggplot(res.2.plot,
                              aes(x = Received, y = Value)) +
-                geom_boxplot(aes(fill = Received)) +
-                geom_rug(aes(colour = Received), alpha = 0.85) +
+                geom_boxplot(aes(fill = Received), na.rm = TRUE) +
+                geom_rug(aes(colour = Received), alpha = 0.85, sides = "l", na.rm = TRUE) +
                 facet_grid(Quantile ~ Recommended + Model) +
-                theme(legend.position = "bottom") +
+                theme(legend.position = "none") +
                 ylab("Average Outcome")
         }
     } else if (type == "boxplot")
@@ -329,7 +336,7 @@ plotCompare <- function(...,
             res.2.plot$Value <- as.factor(res.2.plot$Value)
             pl.obj <- ggplot(res.2.plot,
                              aes(x = Received, fill = factor(Value) )) +
-                geom_bar(position = "fill") +
+                geom_bar(position = "fill", na.rm = TRUE) +
                 facet_grid(Recommended ~ Model) +
                 theme(legend.position = "bottom") +
                 ylab("Outcome")
@@ -338,18 +345,18 @@ plotCompare <- function(...,
         {
             pl.obj <- ggplot(res.2.plot,
                              aes(x = Received, y = Value)) +
-                geom_boxplot(aes(fill = Received)) +
-                geom_rug(aes(colour = Received), alpha = 0.85) +
+                geom_boxplot(aes(fill = Received), na.rm = TRUE) +
+                geom_rug(aes(colour = Received), alpha = 0.85, sides = "l", na.rm = TRUE) +
                 facet_grid(Recommended ~ Model) +
-                theme(legend.position = "bottom") +
+                theme(legend.position = "none") +
                 ylab("Outcome")
         }
     } else
     {
         pl.obj <- ggplot(avg.res.2.plot,
                          aes(x = Recommended, y = Value, group = Received)) +
-            geom_line(aes(colour = Received), size = 1.25) +
-            geom_point(aes(colour = Received), size = 2) +
+            geom_line(aes(colour = Received), size = 1.25, na.rm = TRUE) +
+            geom_point(aes(colour = Received), size = 2, na.rm = TRUE) +
             facet_grid( ~ Model) +
             theme(legend.position = "bottom") +
             scale_x_discrete(expand = c(0.25, 0.25)) +

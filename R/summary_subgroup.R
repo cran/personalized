@@ -36,16 +36,17 @@ summary.subgroup_fitted <- function(object, digits = max(getOption('digits')-3, 
             ntot <- length(as.vector(est.coef)[-1])
         }
 
-
-        cat("\n")
-
         ## if variables are selected print out how many are selected
         ## and their coefficient estimates
+
+        cat("\n---------------------------------------------------\n\n")
 
         cat(nsel - object$n.trts + 1 - 1 * (grepl("owl_", object$loss) & object$n.trts > 2),
             "out of",
             ntot - object$n.trts + 1 - 1 * (grepl("owl_", object$loss) & object$n.trts > 2),
-            "variables selected in total by the lasso (cross validation criterion).\n\n")
+            "interactions selected in total by the lasso (cross validation criterion).\n\n")
+
+        cat("The first estimate is the treatment main effect, which is always selected. \nAny other variables selected represent treatment-covariate interactions.\n\n")
 
         if (object$n.trts == 2)
         {
@@ -58,7 +59,7 @@ summary.subgroup_fitted <- function(object, digits = max(getOption('digits')-3, 
             rownames(coefmat) <- sel.varnames
             colnames(coefmat) <- "Estimate"
 
-            print.default(round(coefmat, digits), quote = FALSE, right = TRUE, na.print = "NA", ...)
+            print.default(t(round(coefmat, digits)), quote = FALSE, right = TRUE, na.print = "NA", ...)
         } else
         {
 
@@ -102,10 +103,10 @@ summary.subgroup_fitted <- function(object, digits = max(getOption('digits')-3, 
                     coefmat <- matrix(coefs.cur[sel.idx], ncol = 1)
 
                     rownames(coefmat) <- sel.varnames.cur
-                    colnames(coefmat) <- paste0("Estimates for delta(",
+                    colnames(coefmat) <- paste0("Estimates for delta (",
                                                 object$comparison.trts[t], " vs ", object$reference.trt, ")" )
 
-                    print.default(round(coefmat, digits), quote = FALSE, right = TRUE, na.print = "NA", ...)
+                    print.default(t(round(coefmat, digits)), quote = FALSE, right = TRUE, na.print = "NA", ...)
                 }
             } else
             {
@@ -136,13 +137,15 @@ summary.subgroup_fitted <- function(object, digits = max(getOption('digits')-3, 
                     colnames(coefmat) <- paste0("Estimates for delta(",
                                                 object$trts[t],")" )
 
-                    print.default(round(coefmat, digits), quote = FALSE, right = TRUE, na.print = "NA", ...)
+                    print.default(t(round(coefmat, digits)), quote = FALSE, right = TRUE, na.print = "NA", ...)
                 }
             }
         }
 
     } else
     {
+        cat("\n---------------------------------------------------\n")
+        cat("The following summary pertains to estimated treatment-covariate interactions:\n")
         return(summary(object$model))
     }
 }

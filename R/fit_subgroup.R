@@ -22,7 +22,7 @@
 #' allows for flexible estimation using machine learning and can be useful when the underlying treatment-covariate interaction
 #' is complex.
 #' \itemize{
-#'     \item{Continuous Outcomes}
+#'     \item{\strong{Continuous Outcomes}}
 #'     \itemize{
 #'         \item{\code{"sq_loss_lasso"}}{ - M(y, v) = (v - y) ^ 2 with linear model and lasso penalty}
 #'         \item{\code{"owl_logistic_loss_lasso"}} { - M(y, v) = ylog(1 + exp\{-v\}) (method of Regularized Outcome Weighted Subgroup Identification)}
@@ -36,17 +36,24 @@
 #'         \item{\code{"owl_logistic_loss_lasso_gam"}} { - M(y, v) = ylog(1 + exp\{-v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
 #'         \item{\code{"owl_logistic_flip_loss_lasso_gam"}} { - M(y, v) = |y|log(1 + exp\{-sign(y)v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
 #'         \item{\code{"sq_loss_gbm"}}{ - M(y, v) = (v - y) ^ 2 with gradient-boosted decision trees model}
-#'         \item{\code{"abs_loss_gbm"}}{ - M(y, v) = |v - y| with gradient-boosted decision trees model}
 #'     }
-#'     \item{Binary Outcomes}
+#'     \item{\strong{Binary Outcomes}}
 #'     \itemize{
 #'         \item{All losses for continuous outcomes can be used plus the following:}
 #'         \item{\code{"logistic_loss_lasso"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with with linear model and lasso penalty}
-#'         \item{\code{"logistic_loss_lasso_gam"}}{ - M(y, v) = y * log(1 + exp\{-v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
-#'         \item{\code{"logistic_loss_gam"}}{ - M(y, v) = y * log(1 + exp\{-v\}) with generalized additive model fit on all variables}
+#'         \item{\code{"logistic_loss_lasso_gam"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with variables selected by lasso penalty and generalized additive model fit on the selected variables}
+#'         \item{\code{"logistic_loss_gam"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with generalized additive model fit on all variables}
 #'         \item{\code{"logistic_loss_gbm"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with gradient-boosted decision trees model}
 #'     }
-#'     \item{Time-to-Event Outcomes}
+#'     \item{\strong{Count Outcomes}}
+#'     \itemize{
+#'         \item{All losses for continuous outcomes can be used plus the following:}
+#'         \item{\code{"poisson_loss_lasso"}}{ - M(y, v) = -[yv - exp(v)] with with linear model and lasso penalty}
+#'         \item{\code{"poisson_loss_lasso_gam"}}{ - M(y, v) = -[yv - exp(v)] with variables selected by lasso penalty and generalized additive model fit on the selected variables}
+#'         \item{\code{"poisson_loss_gam"}}{ - M(y, v) = -[yv - exp(v)] with generalized additive model fit on all variables}
+#'         \item{\code{"poisson_loss_gbm"}}{ - M(y, v) = -[yv - exp(v)] with gradient-boosted decision trees model}
+#'     }
+#'     \item{\strong{Time-to-Event Outcomes}}
 #'     \itemize{
 #'         \item{\code{"cox_loss_lasso"}}{ - M corresponds to the negative partial likelihood of the cox model with linear model and additionally a lasso penalty}
 #'         \item{\code{"cox_loss_gbm"}}{ - M corresponds to the negative partial likelihood of the cox model with gradient-boosted decision trees model}
@@ -65,18 +72,136 @@
 #' @param augment.func function which inputs the response \code{y}, the covariates \code{x}, and \code{trt} and outputs
 #' predicted values (on the link scale) for the response using a model constructed with \code{x}. \code{augment.func()} can also be simply
 #' a function of \code{x} and \code{y}. This function is used for efficiency augmentation.
-#' When the form of the augmentation function is correct, it can provide efficient estimation of the subgroups
+#' When the form of the augmentation function is correct, it can provide efficient estimation of the subgroups. Some examples of possible
+#' augmentation functions are:
+#'
 #' Example 1: \code{augment.func <- function(x, y) {lmod <- lm(y ~ x); return(fitted(lmod))}}
 #'
-#' Example 2: \code{augment.func <- function(x, y, trt) {lmod <- lm(y ~ x + trt); return(fitted(lmod))}}
+#' Example 2:
+#' \preformatted{
+#' augment.func <- function(x, y, trt) {
+#'     data <- data.frame(x, y, trt)
+#'     lmod <- lm(y ~ x * trt)
+#'     ## get predictions when trt = 1
+#'     data$trt <- 1
+#'     preds_1  <- predict(lmod, data)
+#'
+#'     ## get predictions when trt = -1
+#'     data$trt <- -1
+#'     preds_n1 <- predict(lmod, data)
+#'
+#'     ## return predictions averaged over trt
+#'     return(0.5 * (preds_1 + preds_n1))
+#' }
+#' }
 #'
 #' For binary and time-to-event outcomes, make sure that predictions are returned on the scale of the predictors
 #'
 #' Example 3:
+#' \preformatted{augment.func <- function(x, y) {
+#'         bmod <- glm(y ~ x, family = binomial())
+#'         return(predict(bmod, type = "link"))
+#'     }
+#'  }
+#' @param fit.custom.loss A function which \emph{minimizes} a user-specified
+#' custom loss function M(y,v) to be used in model fitting.
+#' If provided, \code{fit.custom.loss} should take the modified
+#' design matrix (which includes an intercept term)
+#' as an argument and the responses and optimize a
+#' custom weighted loss function.
 #'
-#' \code{augment.func <- function(x, y) {
-#'     bmod <- glm(y ~ x, family = binomial());
-#'     return(predict(bmod, type = "link"))}
+#' The loss function \eqn{M(y, v)} to be minimized \strong{MUST} meet
+#' the following two criteria:
+#' \enumerate{
+#' \item{}{ \eqn{D_M(y, v) = \partial M(y, v)/\partial v } must be increasing in v for each fixed y. \eqn{D_M(y, v)} is the partial
+#' derivative of the loss function M(y, v) with respect to v}
+#' \item{}{ \eqn{D_M(y, 0)} is monotone in y}
+#' }
+#' An example of a valid loss function is \eqn{M(y, v) = (y - v)^2}. In this case \eqn{D_M(y, v) = -2(y - v)}.
+#' See Chen et al. (2017) for more details on the
+#' restrictions on the loss function \eqn{M(y, v)}.
+#'
+#' The provided function \strong{MUST} return a list with the following elements:
+#' \itemize{
+#' \item{\code{predict}}{ a function that inputs a design matrix and a 'type' argument for the type of predictions and outputs
+#' a vector of predictions on the scale of the linear predictor. Note that the matrix provided to 'fit.custom.loss'
+#' has a column appended to the first column of \code{x} corresponding to the treatment main effect.
+#' Thus, the prediction function should deal with this,
+#' e.g. \code{predict(model, cbind(1, x))}}
+#' \item{\code{model} }{ a fitted model object returned by the underlying fitting function}
+#' \item{\code{coefficients}}{ if the underlying fitting function yields a vector of coefficient estimates, they should be provided here}
+#' }
+#'
+#' The provided function \strong{MUST} be a function
+#' with the following arguments:
+#' \enumerate{
+#' \item{\code{x}}{ design matrix}
+#' \item{\code{y}}{ vector of responses}
+#' \item{\code{weights}}{ vector for observations weights. The underlying loss function \strong{MUST} have samples weighted according
+#' to this vector. See below example}
+#' \item{\code{...}}{ additional arguments passed via '\code{...}'. This can be used so that users can specify more arguments to the
+#' underlying fitting function if so desired.}
+#' }
+#' The provided function can also optionally take the following arguments:
+#' \itemize{
+#' \item{\code{match.id}}{ vector of case/control cluster IDs. This is useful if cross validation is used in the underlying fitting function
+#' in which case it is advisable to sample whole clusters randomly instead of individual observations.}
+#' \item{\code{offset}}{ if efficiency augmentation is used, the predictions from the outcome model from \code{augment.func}
+#' will be provided via the \code{offset} argument, which can be used as an offset in the underlying fitting function
+#' as a means of incorporating the efficiency augmentation model's predictions}
+#' \item{\code{trt}}{ vector of treatment statuses}
+#' \item{\code{family}}{ family of outcome}
+#' \item{\code{n.trts}}{ numer of treatment levels. Can be useful if there are more than 2 treatment levels}
+#' }
+#'
+#'  Example 1: Here we minimize \eqn{M(y, v) = (y - v)^2}
+#'  \preformatted{
+#'  fit.custom.loss <- function(x, y, weights, ...) {
+#'      df <- data.frame(y = y, x)
+#'
+#'      # minimize squared error loss with NO lasso penalty
+#'      lmf <- lm(y ~ x - 1, weights = weights,
+#'                data = df, ...)
+#'
+#'      # save coefficients
+#'      cfs = coef(lmf)
+#'
+#'      # create prediction function. Notice
+#'      # how a column of 1's is appended
+#'      # to ensure treatment main effects are included
+#'      # in predictions
+#'      prd = function(x, type = "response")
+#'      {
+#'          dfte <- cbind(1, x)
+#'          colnames(dfte) <- names(cfs)
+#'          predict(lmf, data.frame(dfte))
+#'      }
+#'      # return lost of required components
+#'      list(predict = prd, model = lmf, coefficients = cfs)
+#'  }
+#'  }
+#'
+#'  Example 2: \eqn{M(y, v) = y\exp(-v)}
+#'  \preformatted{
+#'  fit.expo.loss <- function(x, y, weights, ...)
+#'  {
+#'      ## define loss function to be minimized
+#'      expo.loss <- function(beta, x, y, weights) {
+#'          sum(weights * y * exp(-drop(tcrossprod(x, t(beta) )))
+#'      }
+#'
+#'      # use optim() to minimize loss function
+#'      opt <- optim(rep(0, NCOL(x)), fn = expo.loss, x = x, y = y, weights = weights)
+#'
+#'      coefs <- opt$par
+#'
+#'      pred <- function(x, type = "response") {
+#'          tcrossprod(cbind(1, x), t(coefs))
+#'      }
+#'
+#'      # return list of required components
+#'      list(predict = pred, model = opt, coefficients = coefs)
+#'  }
 #'  }
 #' @param cutpoint numeric value for patients with benefit scores above which
 #' (or below which if \code{larger.outcome.better = FALSE})
@@ -118,6 +243,36 @@
 #'   Estimating individualized treatment rules using outcome weighted learning.
 #'   Journal of the American Statistical Association, 107(499), 1106-1118. doi: 10.1080/01621459.2012.695674
 #'   \url{http://dx.doi.org/10.1080/01621459.2012.695674}
+#' @return An object of class \code{"subgroup_fitted"}.
+#' \item{predict}{A function that returns predictions of the covariate-conditional treatment effects }
+#' \item{model}{An object returned by the underlying fitting function used. For example, if the lasso use used to fit
+#' the underlying subgroup identification model, this will be an object returned by \code{cv.glmnet}. }
+#' \item{coefficients}{ If the underlying subgroup identification model is parametric, \code{coefficients} will contain
+#' the estimated coefficients of the model. }
+#' \item{call}{The call that produced the returned object. If \code{retcall = TRUE}, this will contain all objects
+#' supplied to \code{fit.subgroup()}}
+#' \item{family}{The family corresponding to the outcome provided}
+#' \item{loss}{The loss function used}
+#' \item{method}{The method used (either weighting or A-learning)}
+#' \item{propensity.func}{The propensity score function used}
+#' \item{larger.outcome.better}{If larger outcomes are preferred for this model}
+#' \item{cutpoint}{Benefit score cutoff value used for determining subgroups}
+#' \item{var.names}{The names of all variables used}
+#' \item{n.trts}{The number of treatment levels}
+#' \item{comparison.trts}{All treatment levels other than the reference level}
+#' \item{reference.trt}{The reference level for the treatment. This should usually be the control group/level}
+#' \item{trts}{All treatment levels}
+#' \item{trt.received}{The vector of treatment assignments}
+#' \item{pi.x}{A vector of propensity scores}
+#' \item{y}{A vector of outcomes}
+#' \item{benefit.scores}{A vector of conditional treatment effects, i.e. benefit scores}
+#' \item{recommended.trts}{A vector of treatment recommendations (i.e. for each patient,
+#' which treatment results in the best expected potential outcomes)}
+#' \item{subgroup.trt.effects}{(Biased) estimates of the conditional treatment effects
+#' and conditional outcomes. These are essentially just empirical averages within
+#' different combinations of treatment assignments and treatment recommendations}
+#' \item{individual.trt.effects}{estimates of the individual treatment effects as returned by
+#' \code{\link[personalized]{treat.effects}}}
 #'
 #' @examples
 #' library(personalized)
@@ -136,6 +291,7 @@
 #' trt      <- 2 * trt01 - 1
 #'
 #' # simulate response
+#' # delta below drives treatment effect heterogeneity
 #' delta <- 2 * (0.5 + x[,2] - x[,3] - x[,11] + x[,1] * x[,12] )
 #' xbeta <- x[,1] + x[,11] - 2 * x[,12]^2 + x[,13] + 0.5 * x[,15] ^ 2
 #' xbeta <- xbeta + delta * trt
@@ -145,6 +301,9 @@
 #'
 #' # binary outcomes
 #' y.binary <- 1 * (xbeta + rnorm(n.obs, sd = 2) > 0 )
+#'
+#' # count outcomes
+#' y.count <- round(abs(xbeta + rnorm(n.obs, sd = 2)))
 #'
 #' # time-to-event outcomes
 #' surv.time <- exp(-20 - xbeta + rnorm(n.obs, sd = 1))
@@ -163,6 +322,10 @@
 #'     pi.x
 #' }
 #'
+#'
+#' ####################  Continuous outcomes ################################
+#'
+#'
 #' subgrp.model <- fit.subgroup(x = x, y = y,
 #'                            trt = trt01,
 #'                            propensity.func = prop.func,
@@ -170,6 +333,10 @@
 #'                            nfolds = 10)              # option for cv.glmnet
 #'
 #' summary(subgrp.model)
+#'
+#' # estimates of the individual-specific
+#' # treatment effect estimates:
+#' subgrp.model$individual.trt.effects
 #'
 #' # fit lasso + gam model with REML option for gam
 #'
@@ -182,6 +349,43 @@
 #'
 #' subgrp.modelg
 #'
+#' ####################  Using an augmentation function #####################
+#' ## augmentation funcions involve modeling the conditional mean E[Y|T, X]
+#' ## and returning predictions that are averaged over the treatment values
+#' ## return <- 1/2 * (hat{E}[Y|T=1, X] + hat{E}[Y|T=-1, X])
+#' ##########################################################################
+#'
+#' augment.func <- function(x, y, trt) {
+#'     data <- data.frame(x, y, trt)
+#'     xm <- model.matrix(y~trt*x-1, data = data)
+#'
+#'     lmod <- cv.glmnet(y = y, x = xm)
+#'     ## get predictions when trt = 1
+#'     data$trt <- 1
+#'     xm <- model.matrix(y~trt*x-1, data = data)
+#'     preds_1  <- predict(lmod, xm, s = "lambda.min")
+#'
+#'     ## get predictions when trt = -1
+#'     data$trt <- -1
+#'     xm <- model.matrix(y~trt*x-1, data = data)
+#'     preds_n1  <- predict(lmod, xm, s = "lambda.min")
+#'
+#'     ## return predictions averaged over trt
+#'     return(0.5 * (preds_1 + preds_n1))
+#' }
+#'
+#' subgrp.model.aug <- fit.subgroup(x = x, y = y,
+#'                            trt = trt01,
+#'                            propensity.func = prop.func,
+#'                            augment.func    = augment.func,
+#'                            loss   = "sq_loss_lasso",
+#'                            nfolds = 10)              # option for cv.glmnet
+#'
+#' summary(subgrp.model.aug)
+#'
+#' ####################  Binary outcomes ####################################
+#'
+#' # use logistic loss for binary outcomes
 #' subgrp.model.bin <- fit.subgroup(x = x, y = y.binary,
 #'                            trt = trt01,
 #'                            propensity.func = prop.func,
@@ -190,6 +394,22 @@
 #'                            nfolds = 5)              # option for cv.glmnet
 #'
 #' subgrp.model.bin
+#'
+#'
+#' ####################  Count outcomes #####################################
+#'
+#' # use poisson loss for count/poisson outcomes
+#' subgrp.model.poisson <- fit.subgroup(x = x, y = y.count,
+#'                            trt = trt01,
+#'                            propensity.func = prop.func,
+#'                            loss   = "poisson_loss_lasso",
+#'                            type.measure = "mse",    # option for cv.glmnet
+#'                            nfolds = 5)              # option for cv.glmnet
+#'
+#' subgrp.model.poisson
+#'
+#'
+#' ####################  Time-to-event outcomes #############################
 #'
 #' library(survival)
 #' subgrp.model.cox <- fit.subgroup(x = x, y = Surv(y.time.to.event, status),
@@ -201,6 +421,73 @@
 #' subgrp.model.cox
 #'
 #'
+#' ####################  Using custom loss functions ########################
+#'
+#' ## Use custom loss function for binary outcomes
+#'
+#' fit.custom.loss.bin <- function(x, y, weights, offset, ...) {
+#'     df <- data.frame(y = y, x)
+#'
+#'     # minimize logistic loss with NO lasso penalty
+#'     # with allowance for efficiency augmentation
+#'     glmf <- glm(y ~ x - 1, weights = weights,
+#'                 offset = offset, # offset term allows for efficiency augmentation
+#'                 family = binomial(), ...)
+#'
+#'     # save coefficients
+#'     cfs = coef(glmf)
+#'
+#'     # create prediction function.
+#'     prd = function(x, type = "response") {
+#'          dfte <- cbind(1, x)
+#'          colnames(dfte) <- names(cfs)
+#'          ## predictions must be returned on the scale
+#'          ## of the linear predictor
+#'          predict(glmf, data.frame(dfte), type = "link")
+#'     }
+#'     # return lost of required components
+#'     list(predict = prd, model = glmf, coefficients = cfs)
+#' }
+#'
+#' subgrp.model.bin.cust <- fit.subgroup(x = x, y = y.binary,
+#'                                  trt = trt01,
+#'                                  propensity.func = prop.func,
+#'                                  fit.custom.loss = fit.custom.loss.bin)
+#'
+#' subgrp.model.bin.cust
+#'
+#'
+#' ## try exponential loss for
+#' ## positive outcomes
+#'
+#' fit.expo.loss <- function(x, y, weights, ...)
+#' {
+#'     expo.loss <- function(beta, x, y, weights) {
+#'         sum(weights * y * exp(-drop(x %*% beta)))
+#'     }
+#'
+#'     # use optim() to minimize loss function
+#'     opt <- optim(rep(0, NCOL(x)), fn = expo.loss, x = x, y = y, weights = weights)
+#'
+#'     coefs <- opt$par
+#'
+#'     pred <- function(x, type = "response") {
+#'         tcrossprod(cbind(1, x), t(coefs))
+#'     }
+#'
+#'     # return list of required components
+#'     list(predict = pred, model = opt, coefficients = coefs)
+#' }
+#'
+#' # use exponential loss for positive outcomes
+#' subgrp.model.expo <- fit.subgroup(x = x, y = y.count,
+#'                                   trt = trt01,
+#'                                   propensity.func = prop.func,
+#'                                   fit.custom.loss = fit.expo.loss)
+#'
+#' subgrp.model.expo
+#'
+#'
 #' @export
 fit.subgroup <- function(x,
                          y,
@@ -208,30 +495,35 @@ fit.subgroup <- function(x,
                          propensity.func = NULL,
                          loss       = c("sq_loss_lasso",
                                         "logistic_loss_lasso",
+                                        "poisson_loss_lasso",
                                         "cox_loss_lasso",
                                         "owl_logistic_loss_lasso",
                                         "owl_logistic_flip_loss_lasso",
                                         "owl_hinge_loss",
                                         "owl_hinge_flip_loss",
                                         "sq_loss_lasso_gam",
+                                        "poisson_loss_lasso_gam",
                                         "logistic_loss_lasso_gam",
                                         "sq_loss_gam",
+                                        "poisson_loss_gam",
                                         "logistic_loss_gam",
                                         "owl_logistic_loss_gam",
                                         "owl_logistic_flip_loss_gam",
                                         "owl_logistic_loss_lasso_gam",
                                         "owl_logistic_flip_loss_lasso_gam",
                                         "sq_loss_gbm",
-                                        "abs_loss_gbm",
+                                        "poisson_loss_gbm",
                                         "logistic_loss_gbm",
-                                        "cox_loss_gbm"),
-                         method     = c("weighting", "a_learning"),
-                         match.id = NULL,
+                                        "cox_loss_gbm",
+                                        "custom"),
+                         method       = c("weighting", "a_learning"),
+                         match.id     = NULL,
                          augment.func = NULL,
-                         cutpoint   = 0,
+                         fit.custom.loss       = NULL,
+                         cutpoint              = 0,
                          larger.outcome.better = TRUE,
-                         reference.trt = NULL,
-                         retcall    = TRUE,
+                         reference.trt         = NULL,
+                         retcall               = TRUE,
                          ...)
 {
 
@@ -258,9 +550,100 @@ fit.subgroup <- function(x,
     } else if (grepl("logistic_loss", loss) | grepl("huberized_loss", loss))
     {
         family <- "binomial"
+    } else if (grepl("poisson_loss", loss))
+    {
+        family <- "poisson"
     } else
     {
         family <- "gaussian"
+    }
+
+
+    ## if a custom loss function is provided,
+    ## we need to do a lot of checking to make
+    ## sure it has some basic requirements.
+    if (!is.null(fit.custom.loss))
+    {
+        loss <- "custom"
+
+        loss_args <- formalArgs(fit.custom.loss)
+
+        if (loss_args[length(loss_args)] != "...")
+        {
+            stop("last argument of 'fit.custom.loss' must be '...'")
+        }
+
+        loss_args <- sort(loss_args)
+
+        if (!(all(c("weights", "x" , "y") %in% loss_args)))
+        {
+            stop("'fit.custom.loss' must have arguments 'x', 'y', and 'weights'")
+        }
+
+        if (is.character(fit.custom.loss))
+        {
+            # need to return the function itself
+            # if a function name was given so that
+            # we can add function arguments if need be.
+            #fit.custom.loss <- get(fit.custom.loss, envir = environment())
+            fit.custom.loss <- match.fun(fit.custom.loss)
+        }
+
+        ## a listing of the possible arguments that can be given to fit.custom.loss
+        args_needed <- sort(c("...", "family", "match.id", "n.trts", "offset", "trt", "weights", "x", "y"))
+
+        ## make sure too many args aren't provided
+        if (length(loss_args) > length(args_needed))
+        {
+            args_names <- paste(unname(sapply(args_needed, function(cr) paste0("'", cr, "'"))),
+                                collapse = ", ")
+            stop(c("Too many arguments provided. Arguments allowed are: ", args_names) )
+        } else
+        {
+            ## make sure no invalid args are provided
+            if (any(!(loss_args %in% args_needed)))
+            {
+                stop("Invalid arguments given to 'fit.custom.loss'")
+            }
+        }
+
+        ## get arguments that weren't provided from args_needed
+        args_2_add <- setdiff(args_needed, loss_args)
+
+        ## add arguments to fit.custom.loss which
+        ## were not defined in fit.custom.loss but need to be there
+        if (length(args_2_add))
+        {
+            args_2_use    <- intersect(args_needed, loss_args)
+            args_2_use_nd <- args_2_use[-match("...", args_2_use)]
+
+            ## define new fit function that has all requisite arguments
+            ## but that only actually calls the ones that were provided
+            fit.custom.loss2 <- function(x, y, weights, trt, n.trts, match.id, offset, family, ...)
+            {
+                if ("..." %in% args_2_use)
+                {
+                    dots <- list(...)
+                    arglist <- lapply(args_2_use_nd, function(rg) get(rg, envir = environment()))
+                    names(arglist) <- args_2_use_nd
+                    return( do.call(fit.custom.loss, c(arglist, dots)  ) )
+                } else
+                {
+                    arglist <- lapply(args_2_use_nd, function(rg) get(rg, envir = environment()))
+                    names(arglist) <- args_2_use_nd
+                    return( do.call(fit.custom.loss, arglist) )
+                }
+            }
+        } else
+        {
+            fit.custom.loss2 <- fit.custom.loss
+        }
+
+    }
+
+    if (loss == "custom" & is.null(fit.custom.loss))
+    {
+        stop("if loss = 'custom', then user must specify a custom loss function via the 'fit.custom.loss' argument")
     }
 
 
@@ -318,23 +701,28 @@ fit.subgroup <- function(x,
     augment.method <- switch(loss,
                              "sq_loss_lasso"                    = "offset",
                              "logistic_loss_lasso"              = "offset",
+                             "poisson_loss_lasso"                   = "offset",
                              "cox_loss_lasso"                   = "offset",
                              "owl_logistic_loss_lasso"          = "adj",
                              "owl_logistic_flip_loss_lasso"     = "adj",
                              "owl_hinge_loss"                   = "adj",
                              "owl_hinge_flip_loss"              = "adj",
                              "sq_loss_lasso_gam"                = "offset",
+                             "poisson_loss_lasso_gam"               = "offset",
                              "logistic_loss_lasso_gam"          = "offset",
                              "sq_loss_gam"                      = "offset",
+                             "poisson_loss_gam"                     = "offset",
                              "logistic_loss_gam"                = "offset",
                              "owl_logistic_loss_gam"            = "adj",
                              "owl_logistic_flip_loss_gam"       = "adj",
                              "owl_logistic_loss_lasso_gam"      = "adj",
                              "owl_logistic_flip_loss_lasso_gam" = "adj",
                              "sq_loss_gbm"                      = "offset",
+                             "poisson_loss_gbm"                     = "offset",
                              "abs_loss_gbm"                     = "offset",
                              "logistic_loss_gbm"                = "offset",
-                             "cox_loss_gbm"                     = "offset")
+                             "cox_loss_gbm"                     = "offset",
+                             "custom"                           = "offset_notdots")
 
     if (is.factor(trt))
     {
@@ -346,6 +734,11 @@ fit.subgroup <- function(x,
     {
         unique.trts <- sort(unique(trt))
         n.trts      <- length(unique.trts)
+    }
+
+    if (n.trts > 2 & loss == "custom")
+    {
+        stop("custom loss functions not currently available for multiple treatments")
     }
 
     if (n.trts > 2 & grepl("owl_", loss) & grepl("hinge_", loss))
@@ -402,7 +795,8 @@ fit.subgroup <- function(x,
     }
 
     # Check match.id validity and convert it to a factor, if supplied
-    if (!is.null(match.id)) {
+    if (!is.null(match.id))
+    {
         match.id <- tryCatch(expr=as.factor(match.id), error = function(e) {stop("match.id must be a factor or capable of being coerced to a factor.")})
         if (length(levels(match.id)) < 2) {stop("match.id must have at least 2 levels")}
     }
@@ -489,6 +883,10 @@ fit.subgroup <- function(x,
     } else
     {
         y.adj <- y
+        if (augment.method == "offset_notdots")
+        {
+            extra.args <- list(offset = rep(1, NROW(y)))
+        }
     }
 
     # stop if augmentation function provided
@@ -710,12 +1108,45 @@ fit.subgroup <- function(x,
                                                 match.id = match.id, ...), extra.args) )
     } else
     {
-        # identify correct fitting function and call it
-        fit_fun      <- paste0("fit_", loss)
+        if (loss == "custom")
+        {
+            fitted.model <- do.call(fit.custom.loss2, c(list(x = x.tilde, trt = trt, n.trts = n.trts,
+                                                             y = y.adj, weights = wts, family = family,
+                                                             match.id = match.id, ...), extra.args)  )
 
-        fitted.model <- do.call(fit_fun, c(list(x = x.tilde, trt = trt, n.trts = n.trts,
-                                                y = y.adj, wts = wts, family = family,
-                                                match.id = match.id, ...), extra.args)  )
+            ## some general error checking for custom losses
+            if (length(fitted.model) == 3)
+            {
+                lst_names <- sort(names(fitted.model))
+                if (any(lst_names != c("coefficients", "model", "predict")))
+                {
+                    stop("'fit.custom.loss' must return a list with elements 'coefficients', 'model', and 'predict'. If
+                         underlying methodology does not return coefficients, the coefficients element can take the value NULL")
+                }
+            } else if (length(fitted.model) == 2)
+            {
+                lst_names <- sort(names(fitted.model))
+                if (any(lst_names != c("model", "predict")))
+                {
+                    stop("'fit.custom.loss' must return a list with elements 'model' and 'predict'")
+                }
+                fitted.model <- c( fitted.model, list(coefficients = NULL) )
+            }
+
+            if (!is.function(fitted.model$predict))
+            {
+                stop("the 'predict' element of the list returned by 'fit.custom.loss' must be a function")
+            }
+
+        } else
+        {
+            # identify correct fitting function and call it
+            fit_fun      <- paste0("fit_", loss)
+
+            fitted.model <- do.call(fit_fun, c(list(x = x.tilde, trt = trt, n.trts = n.trts,
+                                                    y = y.adj, wts = wts, family = family,
+                                                    match.id = match.id, ...), extra.args)  )
+        }
     }
 
 
@@ -730,6 +1161,7 @@ fit.subgroup <- function(x,
     fitted.model$propensity.func       <- propensity.func
     fitted.model$augment.func          <- augment.func
     fitted.model$larger.outcome.better <- larger.outcome.better
+    fitted.model$cutpoint              <- cutpoint
     fitted.model$var.names             <- vnames
     fitted.model$n.trts                <- n.trts
     fitted.model$comparison.trts       <- comparison.trts
@@ -739,7 +1171,33 @@ fit.subgroup <- function(x,
     fitted.model$pi.x                  <- pi.x
     fitted.model$y                     <- y
 
-    fitted.model$benefit.scores        <- fitted.model$predict(x)
+
+
+    bene.scores <- fitted.model$predict(x)
+
+    if (NCOL(bene.scores) > 1)
+    {
+        cnames <- 1:NCOL(bene.scores)
+
+        for (t in 1:(n.trts - 1))
+        {
+            cnames[t] <- paste0(comparison.trts[t], "-vs-", reference.trt)
+        }
+        colnames(bene.scores) <- cnames
+    }
+
+    attr(bene.scores, "comparison.trts") <- comparison.trts
+    attr(bene.scores, "reference.trt")   <- reference.trt
+
+    fitted.model$benefit.scores        <- bene.scores
+
+
+
+    if (NROW(fitted.model$benefit.scores) != NROW(y))
+    {
+        warning("predict function returned a vector of predictions not equal to the number of observations
+                when applied to the whole sample. Please check predict function.")
+    }
 
     fitted.model$recommended.trts      <- predict.subgroup_fitted(fitted.model, newx = x,
                                                                   type = "trt.group",
@@ -754,6 +1212,14 @@ fit.subgroup <- function(x,
                                                           cutpoint,
                                                           larger.outcome.better,
                                                           reference.trt = reference.trt)
+
+    # calculate individual treatment effect estimates
+    suppressWarnings(
+        fitted.model$individual.trt.effects <- treat.effects(fitted.model$benefit.scores,
+                                                             loss,
+                                                             method,
+                                                             pi.x)
+    )
 
     class(fitted.model) <- "subgroup_fitted"
 

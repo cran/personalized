@@ -12,9 +12,10 @@
 #' @export
 print.subgroup_fitted <- function(x, digits = max(getOption('digits')-3, 3), ...)
 {
-    cat("family: ", x$family, "\n")
-    cat("loss:   ", x$loss, "\n")
-    cat("method: ", x$method, "\n")
+    cat("family:   ", x$family, "\n")
+    cat("loss:     ", x$loss, "\n")
+    cat("method:   ", x$method, "\n")
+    cat("cutpoint: ", x$cutpoint, "\n")
 
     if (!is.null(x$augment.func))
     {
@@ -28,10 +29,52 @@ print.subgroup_fitted <- function(x, digits = max(getOption('digits')-3, 3), ...
     {
         func.name <- as.character(substitute(x$propensity.func))
         func.name <- func.name[length(func.name)]
-        cat("propensity \nfunction:",
+        cat("propensity \nfunction: ",
             func.name,
             "\n")
     }
+    cat("\n")
+    if (x$n.trts == 2)
+    {
+        if (x$larger.outcome.better)
+        {
+            cat("benefit score: f(x), \nTrt recom =",
+                paste0(x$comparison.trts, "*I(f(x)>c)+",
+                       x$reference.trt, "*I(f(x)<=c)"), "where c is 'cutpoint'\n")
+        } else
+        {
+            cat("benefit score: f(x), \nTrt recom =",
+                paste0(x$comparison.trts, "*I(f(x)<c)+",
+                       x$reference.trt, "*I(f(x)>=c)"), "where c is 'cutpoint'\n")
+        }
+
+    } else
+    {
+        if (x$larger.outcome.better)
+        {
+            bene.text <- paste(paste0("f_", (x$comparison.trts), "(x): ",
+                                      paste(x$comparison.trts, "vs", x$reference.trt)),
+                               collapse = ",  ")
+            bene.txt2 <- paste0("\n               f_", x$reference.trt,  "(x): 0")
+            cat("benefit score:", bene.text, bene.txt2, "\n")
+            trt.rec.text <- paste0("maxval = max(", paste(paste0("f_", (x$comparison.trts), "(x)"), collapse = ", "), ")")
+            cat(trt.rec.text, "\n")
+            cat("which.max(maxval) = The trt level which maximizes maxval\n")
+            cat("Trt recom = which.max(maxval)*I(maxval > c) +", paste0(x$reference.trt, "*I(maxval <= c) where c is 'cutpoint'\n") )
+        } else
+        {
+            bene.text <- paste(paste0("f_", (x$comparison.trts), "(x): ",
+                                      paste(x$comparison.trts, "vs", x$reference.trt)),
+                               collapse = ",  ")
+            bene.txt2 <- paste0("\n               f_", x$reference.trt,  "(x): 0")
+            cat("benefit score:", bene.text, bene.txt2, "\n")
+            trt.rec.text <- paste0("minval = min(", paste(paste0("f_", (x$comparison.trts), "(x)"), collapse = ", "), ")")
+            cat(trt.rec.text, "\n")
+            cat("which.min(minval) = The trt level which mininizes minval\n")
+            cat("Trt recom = which.min(minval)*I(minval < c) +", paste0(x$reference.trt, "*I(minval >= c) where c is 'cutpoint'\n") )
+        }
+    }
+
 
     cat("\n")
 
@@ -48,23 +91,34 @@ print.subgroup_fitted <- function(x, digits = max(getOption('digits')-3, 3), ...
     Cf2 <- paste0(round(x$subgroup.trt.effects$subgroup.effects, digits),
                                " (n = ", colSums(x$subgroup.trt.effects$sample.sizes), ")")
     names(Cf2) <- names(x$subgroup.trt.effects$subgroup.effects)
+    cat("Treatment effects conditional on subgroups:\n")
     print.default(Cf2, quote = FALSE, right = TRUE, na.print = "NA",
                   ...)
 
     ncol.bs <- NCOL(x$benefit.scores)
 
+    cat("\nNOTE: The above average outcomes are biased estimates of\n      the expected outcomes conditional on subgroups. \n      Use 'validate.subgroup()' to obtain unbiased estimates.\n")
+
+    cat("\n---------------------------------------------------\n")
+
     if (is.null(ncol.bs) || ncol.bs == 1)
     {
-        cat("\nBenefit score quantiles: \n")
+        cname <- paste0(x$comparison.trts, " vs ", x$reference.trt)
+        cat("\nBenefit score", paste0("quantiles (f(X) for ", cname, "): \n") )
         print(quantile(x$benefit.scores), digits = digits)
     } else
     {
         for (cc in 1:ncol.bs)
         {
-            cat("\nBenefit score", cc, "quantiles: \n")
+            cname <- paste0(x$comparison.trts[cc], " vs ", x$reference.trt)
+            cat("\nBenefit score", cc, paste0("quantiles (f(X) for ", cname, "): \n") )
             print(quantile(x$benefit.scores[,cc]), digits = digits)
         }
     }
+
+    cat("\n---------------------------------------------------\n")
+    cat("\n")
+    print.individual_treatment_effects(x$individual.trt.effects, digits = digits, ...)
 }
 
 #' @param sample.pct boolean variable of whether to print the percent of the test sample within each subgroup. If false
@@ -103,7 +157,7 @@ print.subgroup_validated <- function(x, digits = max(getOption('digits')-3, 3), 
             cat("loss:   ", x$loss, "\n")
             cat("method: ", x$method, "\n\n")
             cat("validation method: ", x$val.method, "\n")
-            cat("Cutoff:            ", names(x$boot.results.quantiles)[q], "\n")
+            cat("cutpoint:          ", names(x$boot.results.quantiles)[q], "\n")
 
             if (is.null(x$iterations))
             {
@@ -112,7 +166,7 @@ print.subgroup_validated <- function(x, digits = max(getOption('digits')-3, 3), 
             {
                 iters <- x$iterations
             }
-            cat("iterations:        ", iters, "\n\n")
+            cat("replications:      ", iters, "\n\n")
 
             if (x$val.method == "training_test_replication")
             {
@@ -121,6 +175,52 @@ print.subgroup_validated <- function(x, digits = max(getOption('digits')-3, 3), 
             {
                 valtext <- "Bootstrap Bias-Corrected Outcomes:"
             }
+
+
+
+            if (x$n.trts == 2)
+            {
+                if (x$larger.outcome.better)
+                {
+                    cat("benefit score: f(x), \nTrt recom =",
+                        paste0(x$comparison.trts, "*I(f(x)>c)+",
+                               x$reference.trt, "*I(f(x)<=c)"), "where c is 'cutpoint'\n\n")
+                } else
+                {
+                    cat("benefit score: f(x), \nTrt recom =",
+                        paste0(x$comparison.trts, "*I(f(x)<c)+",
+                               x$reference.trt, "*I(f(x)>=c)"), "where c is 'cutpoint'\n\n")
+                }
+
+            } else
+            {
+                if (x$larger.outcome.better)
+                {
+                    bene.text <- paste(paste0("f_", (x$comparison.trts), "(x): ",
+                                              paste(x$comparison.trts, "vs", x$reference.trt)),
+                                       collapse = ",  ")
+                    bene.txt2 <- paste0("\n               f_", x$reference.trt,  "(x): 0")
+                    cat("benefit score:", bene.text, bene.txt2, "\n")
+                    trt.rec.text <- paste0("maxval = max(", paste(paste0("f_", (x$comparison.trts), "(x)"), collapse = ", "), ")")
+                    cat(trt.rec.text, "\n")
+                    cat("which.max(maxval) = The trt level which maximizes maxval\n")
+                    cat("Trt recom = which.max(maxval)*I(maxval > c) +", paste0(x$reference.trt, "*I(maxval <= c) where c is 'cutpoint'\n") )
+                } else
+                {
+                    bene.text <- paste(paste0("f_", (x$comparison.trts), "(x): ",
+                                              paste(x$comparison.trts, "vs", x$reference.trt)),
+                                       collapse = ",  ")
+                    bene.txt2 <- paste0("\n               f_", x$reference.trt,  "(x): 0")
+                    cat("benefit score:", bene.text, bene.txt2, "\n")
+                    trt.rec.text <- paste0("minval = min(", paste(paste0("f_", (x$comparison.trts), "(x)"), collapse = ", "), ")")
+                    cat(trt.rec.text, "\n")
+                    cat("which.min(minval) = The trt level which minimizes minval\n")
+                    cat("Trt recom = which.min(minval)*I(minval < c) +", paste0(x$reference.trt, "*I(minval >= c) where c is 'cutpoint'\n") )
+                }
+                cat("\n")
+            }
+
+
 
             cat(paste0("Average ", valtext, "\n"))
 
@@ -159,6 +259,8 @@ print.subgroup_validated <- function(x, digits = max(getOption('digits')-3, 3), 
                               ", n = ", round(colSums(x$avg.quantile.results[[q]]$sample.sizes), digits), ")")
             }
             names(Cf2) <- names(x$avg.quantile.results[[q]]$subgroup.effects)
+
+            cat("Treatment effects conditional on subgroups:\n")
             print.default(Cf2, quote = FALSE, right = TRUE, na.print = "NA",
                           ...)
 
@@ -166,7 +268,9 @@ print.subgroup_validated <- function(x, digits = max(getOption('digits')-3, 3), 
 
             overall <- paste0(round(x$avg.quantile.results[[q]]$overall.subgroup.effect, digits),
                               " (SE = ", round(x$se.quantile.results[[q]]$SE.overall.subgroup.effect, digits), ")")
-            names(overall) <- "Overall Subgroup Effect"
+            #names(overall) <- "Overall treatment effect conditional on subgroups (E[Y|Trt Received = Trt recommended])"
+            cat("Est of E[Y|Trt received = Trt recom] - E[Y|Trt received =/= Trt recom]:")
+            names(overall) <- ""
 
             print.default(overall, quote = FALSE, right = TRUE, na.print = "NA",
                           ...)
@@ -183,6 +287,7 @@ print.subgroup_validated <- function(x, digits = max(getOption('digits')-3, 3), 
         cat("loss:   ", x$loss, "\n")
         cat("method: ", x$method, "\n\n")
         cat("validation method: ", x$val.method, "\n")
+        cat("cutpoint:          ", x$cutpoint, "\n")
 
         if (is.null(x$iterations))
         {
@@ -191,7 +296,7 @@ print.subgroup_validated <- function(x, digits = max(getOption('digits')-3, 3), 
         {
             iters <- x$iterations
         }
-        cat("iterations: ", iters, "\n\n")
+        cat("replications:      ", iters, "\n\n")
 
         if (x$val.method == "training_test_replication")
         {
@@ -200,6 +305,49 @@ print.subgroup_validated <- function(x, digits = max(getOption('digits')-3, 3), 
         {
             valtext <- "Bootstrap Bias-Corrected Outcomes:"
         }
+
+        if (x$n.trts == 2)
+        {
+            if (x$larger.outcome.better)
+            {
+                cat("benefit score: f(x), \nTrt recom =",
+                    paste0(x$comparison.trts, "*I(f(x)>c)+",
+                           x$reference.trt, "*I(f(x)<=c)"), "where c is 'cutpoint'\n\n")
+            } else
+            {
+                cat("benefit score: f(x), \nTrt recom =",
+                    paste0(x$comparison.trts, "*I(f(x)<c)+",
+                           x$reference.trt, "*I(f(x)>=c)"), "where c is 'cutpoint'\n\n")
+            }
+
+        } else
+        {
+            if (x$larger.outcome.better)
+            {
+                bene.text <- paste(paste0("f_", (x$comparison.trts), "(x): ",
+                                          paste(x$comparison.trts, "vs", x$reference.trt)),
+                                   collapse = ",  ")
+                bene.txt2 <- paste0("\n               f_", x$reference.trt,  "(x): 0")
+                cat("benefit score:", bene.text, bene.txt2, "\n")
+                trt.rec.text <- paste0("maxval = max(", paste(paste0("f_", (x$comparison.trts), "(x)"), collapse = ", "), ")")
+                cat(trt.rec.text, "\n")
+                cat("which.max(maxval) = The trt level which maximizes maxval\n")
+                cat("Trt recom = which.max(maxval)*I(maxval > c) +", paste0(x$reference.trt, "*I(maxval <= c) where c is 'cutpoint'\n") )
+            } else
+            {
+                bene.text <- paste(paste0("f_", (x$comparison.trts), "(x): ",
+                                          paste(x$comparison.trts, "vs", x$reference.trt)),
+                                   collapse = ",  ")
+                bene.txt2 <- paste0("\n               f_", x$reference.trt,  "(x): 0")
+                cat("benefit score:", bene.text, bene.txt2, "\n")
+                trt.rec.text <- paste0("minval = min(", paste(paste0("f_", (x$comparison.trts), "(x)"), collapse = ", "), ")")
+                cat(trt.rec.text, "\n")
+                cat("which.min(minval) = The trt level which minimizes minval\n")
+                cat("Trt recom = which.min(minval)*I(minval < c) +", paste0(x$reference.trt, "*I(minval >= c) where c is 'cutpoint'\n") )
+            }
+            cat("\n")
+        }
+
 
         cat(paste0("Average ", valtext, "\n"))
 
@@ -237,6 +385,7 @@ print.subgroup_validated <- function(x, digits = max(getOption('digits')-3, 3), 
                           ", n = ", round(colSums(x$avg.results$sample.sizes), digits), ")")
         }
         names(Cf2) <- names(x$avg.results$subgroup.effects)
+        cat("Treatment effects conditional on subgroups:\n")
         print.default(Cf2, quote = FALSE, right = TRUE, na.print = "NA",
                       ...)
 
@@ -244,11 +393,12 @@ print.subgroup_validated <- function(x, digits = max(getOption('digits')-3, 3), 
 
         overall <- paste0(round(x$avg.results$overall.subgroup.effect, digits),
                           " (SE = ", round(x$se.results$SE.overall.subgroup.effect, digits), ")")
-        names(overall) <- "Overall Subgroup Effect"
+        #names(overall) <- "Overall treatment effect conditional on subgroups"
+        cat("Est of \nE[Y|Trt received = Trt recom] - E[Y|Trt received =/= Trt recom]:")
+        names(overall) <- ""
 
-        print.default(overall, quote = FALSE, right = TRUE, na.print = "NA",
+        print.default(overall, quote = FALSE, right = FALSE, na.print = "NA",
                       ...)
     }
-
 
 }
