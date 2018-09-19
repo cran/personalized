@@ -34,7 +34,29 @@ all_losses <- c("sq_loss_lasso",
                 "custom")
 
 calc_treatment_effects <- function(benefit.scores,
-                                   loss = all_losses,
+                                   loss = c("sq_loss_lasso",
+                                            "logistic_loss_lasso",
+                                            "poisson_loss_lasso",
+                                            "cox_loss_lasso",
+                                            "owl_logistic_loss_lasso",
+                                            "owl_logistic_flip_loss_lasso",
+                                            "owl_hinge_loss",
+                                            "owl_hinge_flip_loss",
+                                            "sq_loss_lasso_gam",
+                                            "poisson_loss_lasso_gam",
+                                            "logistic_loss_lasso_gam",
+                                            "sq_loss_gam",
+                                            "poisson_loss_gam",
+                                            "logistic_loss_gam",
+                                            "owl_logistic_loss_gam",
+                                            "owl_logistic_flip_loss_gam",
+                                            "owl_logistic_loss_lasso_gam",
+                                            "owl_logistic_flip_loss_lasso_gam",
+                                            "sq_loss_gbm",
+                                            "poisson_loss_gbm",
+                                            "logistic_loss_gbm",
+                                            "cox_loss_gbm",
+                                            "custom"),
                                    method = c("weighting", "a_learning"),
                                    pi.x = NULL)
 {
@@ -127,7 +149,29 @@ treatment.effects.default <- function(x, ...)
 #' @rdname treatment.effects
 #' @export
 treat.effects <- function(benefit.scores,
-                          loss = all_losses,
+                          loss = c("sq_loss_lasso",
+                                   "logistic_loss_lasso",
+                                   "poisson_loss_lasso",
+                                   "cox_loss_lasso",
+                                   "owl_logistic_loss_lasso",
+                                   "owl_logistic_flip_loss_lasso",
+                                   "owl_hinge_loss",
+                                   "owl_hinge_flip_loss",
+                                   "sq_loss_lasso_gam",
+                                   "poisson_loss_lasso_gam",
+                                   "logistic_loss_lasso_gam",
+                                   "sq_loss_gam",
+                                   "poisson_loss_gam",
+                                   "logistic_loss_gam",
+                                   "owl_logistic_loss_gam",
+                                   "owl_logistic_flip_loss_gam",
+                                   "owl_logistic_loss_lasso_gam",
+                                   "owl_logistic_flip_loss_lasso_gam",
+                                   "sq_loss_gbm",
+                                   "poisson_loss_gbm",
+                                   "logistic_loss_gbm",
+                                   "cox_loss_gbm",
+                                   "custom"),
                           method = c("weighting", "a_learning"),
                           pi.x = NULL, ...)
 {
@@ -236,16 +280,20 @@ print.individual_treatment_effects <- function(x, digits = max(getOption('digits
 
     if (!is.na(x$delta[1]))
     {
+        comp <- attr(x$delta, "comparison.trts")
+        ref  <- attr(x$delta, "reference.trt")
+        trts <- attr(x$delta, "trts")
         if (NCOL(x$delta) == 1)
         {
-            comp <- attr(x$delta, "comparison.trts")
-            ref  <- attr(x$delta, "reference.trt")
             cat(paste0("Summary of individual treatment effects: \nE[Y|T=", comp, ", X] - E[Y|T=", ref, ", X]\n\n"))
+            print(summary(x$delta), digits = digits, ...)
+        } else if (NCOL(x$delta) == length(trts))  ##multinomial model case
+        {
+            cat(paste0("Summary of individual treatment effects: \nE[Y|T=", "trt", ", X]\nwhere 'trt' is ", paste(trts, collapse = " and "), "\n\n"))
+
             print(summary(x$delta), digits = digits, ...)
         } else
         {
-            comp <- attr(x$delta, "comparison.trts")
-            ref  <- attr(x$delta, "reference.trt")
             cat(paste0("Summary of individual treatment effects: \nE[Y|T=", "trt", ", X] - E[Y|T=", ref, ", X]\nwhere 'trt' is ", paste(comp, collapse = " and "), "\n\n"))
 
             print(summary(x$delta), digits = digits, ...)
@@ -255,19 +303,23 @@ print.individual_treatment_effects <- function(x, digits = max(getOption('digits
 
     if (!is.na(x$gamma[1]))
     {
+        comp <- attr(x$gamma, "comparison.trts")
+        ref  <- attr(x$gamma, "reference.trt")
+        trts <- attr(x$gamma, "trts")
         if (NCOL(x$gamma) == 1)
         {
-            comp <- attr(x$gamma, "comparison.trts")
-            ref  <- attr(x$gamma, "reference.trt")
             cat(paste0("Summary of individual treatment effects: \nE[Y|T=", comp, ", X] / E[Y|T=", ref, ", X]\n\n"))
 
             cat(paste0("Note: for survival outcomes, the above ratio is \nE[g(Y)|T=", comp, ", X] / E[g(Y)|T=", ref, ", X], \nwhere g() is a monotone increasing function of Y, \nthe survival time\n\n"))
 
             print(summary(x$gamma), digits = digits, ...)
+        } else if (NCOL(x$gamma) == length(trts))  ##multinomial model case
+        {
+            cat(paste0("Summary of individual treatment effects: \nE[Y|T=", "trt", ", X]\nwhere 'trt' is ", paste(trts, collapse = " and "), "\n\n"))
+
+            print(summary(x$gamma), digits = digits, ...)
         } else
         {
-            comp <- attr(x$gamma, "comparison.trts")
-            ref  <- attr(x$gamma, "reference.trt")
             cat(paste0("Summary of individual treatment effects: \nE[Y|T=", "trt", ", X] / E[Y|T=", ref, ", X]\nwhere 'trt' is ", paste(comp, collapse = " and "), "\n\n"))
 
             cat("Note: for survival outcomes, the above ratio is \nE[g(Y)|T=1, X] / E[g(Y)|T=-1, X], \nwhere g() is a monotone increasing function of Y, \nthe survival time\n\n")

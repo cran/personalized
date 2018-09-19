@@ -136,22 +136,13 @@
 #'
 #' y.test <- drop(xbeta.test) + rnorm(10 * n.obs, sd = 2)
 #'
-#' valmod <- validate.subgroup(subgrp.model, B = 10,
+#' valmod <- validate.subgroup(subgrp.model, B = 3,
 #'                             method = "training_test",
 #'                             train.fraction = 0.75)
 #' valmod
 #'
 #' print(valmod, which.quant = c(4, 5))
 #'
-#' bene.score.test <- subgrp.model$predict(x.test)
-#'
-#' mean(y.test[bene.score.test > 0 & trt01.test == 1]) -
-#'        mean(y.test[bene.score.test > 0 & trt01.test == 0])
-#' mean(y.test[bene.score.test <= 0 & trt01.test == 0]) -
-#'        mean(y.test[bene.score.test <= 0 & trt01.test == 1])
-#'
-#' quantile(valmod$boot.results[[1]][,1], c(0.025, 0.975))
-#' quantile(valmod$boot.results[[1]][,2], c(0.025, 0.975))
 #' @export
 validate.subgroup <- function(model,
                               B              = 50L,
@@ -671,6 +662,8 @@ validate.subgroup <- function(model,
     names(boot.list)[c(1:3, 5)] <- names(summary.stats)
     names(boot.list)[4] <- "coefficients"
 
+    colnames(boot.list[[1]]) <- names(model$subgroup.trt.effects$subgroup.effects)
+
     summary.stats.quantile <- summary.stats.quantile.se <- vector(mode = "list", length = n.quantiles)
     for (q in 1:n.quantiles)
     {
@@ -697,6 +690,8 @@ validate.subgroup <- function(model,
         names(boot.list.quantiles[[q]]) <- 1:length(names(boot.list))
         names(boot.list.quantiles[[q]])[c(1:3, 5)] <- names(summary.stats)
         names(boot.list.quantiles[[q]])[4] <- "coefficients"
+
+        colnames(boot.list.quantiles[[q]][[1]]) <- names(model$subgroup.trt.effects$subgroup.effects)
     }
 
     names(summary.stats.quantile) <- names(summary.stats.quantile.se) <-

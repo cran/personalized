@@ -63,7 +63,7 @@ test_that("test validate.subgroup for continuous outcomes with various options",
     invisible(capture.output(print(summarize.subgroups(subgrp.model),
                                    digits = 2, p.value = 0.25)))
 
-    subgrp.val <- validate.subgroup(subgrp.model, B = 10,
+    subgrp.val <- validate.subgroup(subgrp.model, B = 3,
                                     method = "training")
 
     expect_is(subgrp.val, "subgroup_validated")
@@ -72,7 +72,7 @@ test_that("test validate.subgroup for continuous outcomes with various options",
 
     invisible(capture.output(print(subgrp.val, digits = 2, sample.pct = TRUE)))
 
-    subgrp.val <- validate.subgroup(subgrp.model, B = 10,
+    subgrp.val <- validate.subgroup(subgrp.model, B = 3,
                                     method = "boot")
 
     expect_is(subgrp.val, "subgroup_validated")
@@ -80,19 +80,19 @@ test_that("test validate.subgroup for continuous outcomes with various options",
     invisible(capture.output(print(subgrp.val, digits = 2)))
 
 
-    expect_error(validate.subgroup(x, B = 10,
+    expect_error(validate.subgroup(x, B = 3,
                                    method = "training"))
 
     ## parallel
 
-    subgrp.val <- validate.subgroup(subgrp.model, B = 10,
+    subgrp.val <- validate.subgroup(subgrp.model, B = 3,
                                     parallel = TRUE,
                                     method = "training")
 
     expect_is(subgrp.val, "subgroup_validated")
 
 
-    subgrp.val <- validate.subgroup(subgrp.model, B = 10,
+    subgrp.val <- validate.subgroup(subgrp.model, B = 3,
                                     parallel = TRUE,
                                     method = "boot")
 
@@ -169,95 +169,97 @@ test_that("test validate.subgroup for binary outcomes and various losses", {
                                  loss   = "sq_loss_lasso",
                                  nfolds = 5)              # option for cv.glmnet
 
-    subgrp.val <- validate.subgroup(subgrp.model, B = 10,
+    subgrp.val <- validate.subgroup(subgrp.model, B = 3,
                                     benefit.score.quantiles = NULL,
                                     method = "training")
 
-    subgrp.val <- validate.subgroup(subgrp.model, B = 10,
+    subgrp.val <- validate.subgroup(subgrp.model, B = 3,
                                     benefit.score.quantiles = numeric(0),
                                     method = "training")
 
-    subgrp.val <- validate.subgroup(subgrp.model, B = 10,
-                                    method = "training")
+    if (Sys.info()[[1]] != "windows")
+    {
 
-    subgrp.val2 <- validate.subgroup(subgrp.model2, B = 10,
-                                    method = "training")
+        subgrp.val <- validate.subgroup(subgrp.model, B = 3,
+                                        method = "training")
 
-    print(subgrp.val)
-    print(subgrp.val2)
+        subgrp.val2 <- validate.subgroup(subgrp.model2, B = 3,
+                                        method = "training")
 
-    expect_error(validate.subgroup(subgrp.val, B = 10, method = "training"))
+        print(subgrp.val)
+        print(subgrp.val2)
 
-    expect_error(validate.subgroup(subgrp.model, B = 10, train.fraction = -1,
-                                   method = "training"))
+        expect_error(validate.subgroup(subgrp.val, B = 3, method = "training"))
 
-    expect_error(validate.subgroup(subgrp.model, B = 10, train.fraction = 2,
-                                   method = "training"))
+        expect_error(validate.subgroup(subgrp.model, B = 3, train.fraction = -1,
+                                       method = "training"))
 
-    expect_error(print(subgrp.val, which.quant = 99))
+        expect_error(validate.subgroup(subgrp.model, B = 3, train.fraction = 2,
+                                       method = "training"))
 
-    expect_error(print(subgrp.val, which.quant = 1:10))
+        expect_error(print(subgrp.val, which.quant = 99))
 
-    print(subgrp.val, which.quant = c(4, 5))
+        expect_error(print(subgrp.val, which.quant = 1:10))
 
-    print(subgrp.val, which.quant = c(4, 5), sample.pct = TRUE)
+        print(subgrp.val, which.quant = c(4, 5))
 
-
-    subgrp.model2 <- fit.subgroup(x = x, y = y.binary,
-                                 trt = trt01,
-                                 propensity.func = prop.func,
-                                 loss   = "logistic_loss_lasso",
-                                 retcall = FALSE,
-                                 nfolds = 5)
-
-    # retcall must be true
-    expect_error(validate.subgroup(subgrp.model2, B = 10,
-                                   method = "training"))
-
-    expect_is(subgrp.val, "subgroup_validated")
-
-    invisible(capture.output(print(subgrp.val, digits = 2)))
+        print(subgrp.val, which.quant = c(4, 5), sample.pct = TRUE)
 
 
-    subgrp.val <- validate.subgroup(subgrp.model, B = 10,
-                                    method = "train")
+        subgrp.model2 <- fit.subgroup(x = x, y = y.binary,
+                                     trt = trt01,
+                                     propensity.func = prop.func,
+                                     loss   = "logistic_loss_lasso",
+                                     retcall = FALSE,
+                                     nfolds = 5)
 
-    expect_is(subgrp.val, "subgroup_validated")
+        # retcall must be true
+        expect_error(validate.subgroup(subgrp.model2, B = 3,
+                                       method = "training"))
 
-    subgrp.val <- validate.subgroup(subgrp.model, B = 10,
-                                    method = "boot")
+        expect_is(subgrp.val, "subgroup_validated")
 
-    expect_is(subgrp.val, "subgroup_validated")
-
-    invisible(capture.output(print(subgrp.val, digits = 2)))
-
-
-
-
-    subgrp.model <- fit.subgroup(x = x, y = Surv(y.time.to.event, status),
-                                 trt = trt01,
-                                 propensity.func = prop.func,
-                                 loss   = "cox_loss_lasso",
-                                 nfolds = 5)              # option for cv.glmnet
-
-    expect_is(subgrp.model, "subgroup_fitted")
-
-    subgrp.val <- validate.subgroup(subgrp.model, B = 10,
-                                    method = "train")
-
-    expect_is(subgrp.val, "subgroup_validated")
-
-    print(subgrp.val)
+        invisible(capture.output(print(subgrp.val, digits = 2)))
 
 
-    subgrp.val <- validate.subgroup(subgrp.model, B = 10,
-                                    method = "boot")
+        subgrp.val <- validate.subgroup(subgrp.model, B = 3,
+                                        method = "train")
 
-    expect_is(subgrp.val, "subgroup_validated")
+        expect_is(subgrp.val, "subgroup_validated")
 
-    print(subgrp.val)
+        subgrp.val <- validate.subgroup(subgrp.model, B = 3,
+                                        method = "boot")
+
+        expect_is(subgrp.val, "subgroup_validated")
+
+        invisible(capture.output(print(subgrp.val, digits = 2)))
 
 
+
+
+        subgrp.model <- fit.subgroup(x = x, y = Surv(y.time.to.event, status),
+                                     trt = trt01,
+                                     propensity.func = prop.func,
+                                     loss   = "cox_loss_lasso",
+                                     nfolds = 5)              # option for cv.glmnet
+
+        expect_is(subgrp.model, "subgroup_fitted")
+
+        subgrp.val <- validate.subgroup(subgrp.model, B = 3,
+                                        method = "train")
+
+        expect_is(subgrp.val, "subgroup_validated")
+
+        print(subgrp.val)
+
+
+        subgrp.val <- validate.subgroup(subgrp.model, B = 3,
+                                        method = "boot")
+
+        expect_is(subgrp.val, "subgroup_validated")
+
+        print(subgrp.val)
+    }
 
     ####### mult trts
 
@@ -315,44 +317,47 @@ test_that("test validate.subgroup for binary outcomes and various losses", {
         probs
     }
 
-    subgrp.model <- fit.subgroup(x = x, y = y,
-                                 trt = trt,
-                                 propensity.func = propensity.multinom.lasso,
-                                 loss   = "sq_loss_lasso",
-                                 nfolds = 3)              # option for cv.glmnet
+    if (Sys.info()[[1]] != "windows")
+    {
+        subgrp.model <- fit.subgroup(x = x, y = y,
+                                     trt = trt,
+                                     propensity.func = propensity.multinom.lasso,
+                                     loss   = "sq_loss_lasso",
+                                     nfolds = 3)              # option for cv.glmnet
 
-    expect_is(subgrp.model, "subgroup_fitted")
+        expect_is(subgrp.model, "subgroup_fitted")
 
-    print(subgrp.model)
+        print(subgrp.model)
 
-    subgrp.val <- validate.subgroup(subgrp.model, B = 4,
-                                    method = "train")
+        subgrp.val <- validate.subgroup(subgrp.model, B = 2,
+                                        method = "train")
 
-    expect_is(subgrp.val, "subgroup_validated")
+        expect_is(subgrp.val, "subgroup_validated")
 
-    print(subgrp.val)
+        print(subgrp.val)
 
-    print(subgrp.val, which.quant = c(2,4))
+        print(subgrp.val, which.quant = c(2,4))
 
 
-    subgrp.model <- fit.subgroup(x = x, y = y,
-                                 trt = trt,
-                                 propensity.func = propensity.multinom.lasso,
-                                 larger.outcome.better = FALSE,
-                                 loss   = "sq_loss_lasso",
-                                 nfolds = 3)              # option for cv.glmnet
+        subgrp.model <- fit.subgroup(x = x, y = y,
+                                     trt = trt,
+                                     propensity.func = propensity.multinom.lasso,
+                                     larger.outcome.better = FALSE,
+                                     loss   = "sq_loss_lasso",
+                                     nfolds = 3)              # option for cv.glmnet
 
-    expect_is(subgrp.model, "subgroup_fitted")
+        expect_is(subgrp.model, "subgroup_fitted")
 
-    print(subgrp.model)
+        print(subgrp.model)
 
-    subgrp.val <- validate.subgroup(subgrp.model, B = 4,
-                                    method = "train")
+        subgrp.val <- validate.subgroup(subgrp.model, B = 2,
+                                        method = "train")
 
-    expect_is(subgrp.val, "subgroup_validated")
+        expect_is(subgrp.val, "subgroup_validated")
 
-    print(subgrp.val)
+        print(subgrp.val)
 
-    print(subgrp.val, which.quant = c(2,4))
+        print(subgrp.val, which.quant = c(2,4))
+    }
 
 })
