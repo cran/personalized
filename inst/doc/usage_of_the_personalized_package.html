@@ -12,14 +12,14 @@
 
 <meta name="author" content="Jared Huling" />
 
-<meta name="date" content="2018-11-13" />
+<meta name="date" content="2019-02-06" />
 
 <title>Usage of the Personalized Package</title>
 
 
 
 <style type="text/css">code{white-space: pre;}</style>
-<style type="text/css">
+<style type="text/css" data-origin="pandoc">
 a.sourceLine { display: inline-block; line-height: 1.25; }
 a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
 a.sourceLine:empty { height: 1.2em; }
@@ -81,7 +81,29 @@ code span.st { color: #4070a0; } /* String */
 code span.va { color: #19177c; } /* Variable */
 code span.vs { color: #4070a0; } /* VerbatimString */
 code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
 </style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' || rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
 
 
 
@@ -278,7 +300,7 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 
 <h1 class="title toc-ignore">Usage of the Personalized Package</h1>
 <h4 class="author"><em>Jared Huling</em></h4>
-<h4 class="date"><em>2018-11-13</em></h4>
+<h4 class="date"><em>2019-02-06</em></h4>
 
 
 <div id="TOC">
@@ -712,14 +734,14 @@ L_W(f_1, \dots, f_{K}) = \frac{1}{n}\sum_{i = 1}^n\frac{\boldsymbol M(Y_i,  \sum
 ## 
 ## Average Outcomes:
 ##                 Recommended 0      Recommended 1
-## Received 0  -7.8948 (n = 200) -18.5592 (n = 210)
-## Received 1 -20.1436 (n = 288)  -5.7529 (n = 302)
+## Received 0  -7.9896 (n = 197) -18.1199 (n = 213)
+## Received 1 -20.3335 (n = 285)  -5.7089 (n = 305)
 ## 
 ## Treatment effects conditional on subgroups:
 ## Est of E[Y|T=0,Recom=0]-E[Y|T=/=0,Recom=0] 
-##                          12.2487 (n = 488) 
+##                          12.3439 (n = 482) 
 ## Est of E[Y|T=1,Recom=1]-E[Y|T=/=1,Recom=1] 
-##                          12.8064 (n = 512) 
+##                          12.4111 (n = 518) 
 ## 
 ## NOTE: The above average outcomes are biased estimates of
 ##       the expected outcomes conditional on subgroups. 
@@ -729,7 +751,7 @@ L_W(f_1, \dots, f_{K}) = \frac{1}{n}\sum_{i = 1}^n\frac{\boldsymbol M(Y_i,  \sum
 ## 
 ## Benefit score quantiles (f(X) for 1 vs 0): 
 ##       0%      25%      50%      75%     100% 
-## -28.0887  -4.5974   0.2698   5.1089  27.1812 
+## -28.8595  -4.6063   0.3222   5.1211  24.4454 
 ## 
 ## ---------------------------------------------------
 ## 
@@ -737,7 +759,7 @@ L_W(f_1, \dots, f_{K}) = \frac{1}{n}\sum_{i = 1}^n\frac{\boldsymbol M(Y_i,  \sum
 ## E[Y|T=1, X] - E[Y|T=0, X]
 ## 
 ##     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
-## -56.1774  -9.1948   0.5396   0.3954  10.2178  54.3624 
+## -57.7189  -9.2126   0.6443   0.4016  10.2422  48.8908 
 ## 
 ## ---------------------------------------------------
 ## The following summary pertains to estimated treatment-covariate interactions:</code></pre>
@@ -751,27 +773,27 @@ L_W(f_1, \dots, f_{K}) = \frac{1}{n}\sum_{i = 1}^n\frac{\boldsymbol M(Y_i,  \sum
 ## 
 ## Parametric coefficients:
 ##      Estimate Std. Error t value Pr(&gt;|t|)
-## Trt1  0.05318    0.89386   0.059    0.953
+## Trt1  0.05754    0.89371   0.064    0.949
 ## 
 ## Approximate significance of smooth terms:
 ##          edf Ref.df      F  p-value    
-## s(V1)  2.975  3.782  2.540 0.057086 .  
-## s(V2)  3.124  3.977  4.774 0.000786 ***
-## s(V3)  1.000  1.000 10.034 0.001583 ** 
-## s(V8)  1.000  1.000  2.357 0.125059    
-## s(V11) 1.000  1.000  7.409 0.006603 ** 
-## s(V13) 1.000  1.000  7.000 0.008278 ** 
-## s(V17) 1.000  1.000  2.115 0.146215    
-## s(V27) 1.000  1.000  2.014 0.156148    
-## s(V37) 1.000  1.000  4.525 0.033650 *  
-## s(V40) 1.000  1.000  1.178 0.278052    
-## s(V42) 1.000  1.000  2.635 0.104822    
-## s(V50) 1.000  1.000  5.072 0.024531 *  
+## s(V1)  2.975  3.782  2.541 0.056982 .  
+## s(V2)  3.471  4.285  4.571 0.000896 ***
+## s(V3)  1.000  1.000 10.005 0.001608 ** 
+## s(V8)  1.000  1.000  2.353 0.125320    
+## s(V11) 1.000  1.000  7.447 0.006465 ** 
+## s(V13) 1.000  1.000  7.057 0.008020 ** 
+## s(V17) 1.000  1.000  2.151 0.142802    
+## s(V27) 1.000  1.000  2.003 0.157321    
+## s(V37) 1.000  1.000  4.591 0.032378 *  
+## s(V40) 1.000  1.000  1.181 0.277471    
+## s(V42) 1.000  1.000  2.648 0.103985    
+## s(V50) 1.000  1.000  5.145 0.023531 *  
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
-## R-sq.(adj) =  0.0607   Deviance explained = 7.23%
-## GCV = 1510.6  Scale est. = 1484.8    n = 1000</code></pre>
+## R-sq.(adj) =  0.0613   Deviance explained =  7.3%
+## GCV = 1510.6  Scale est. = 1484.2    n = 1000</code></pre>
 </div>
 <div id="binary-outcomes" class="section level3">
 <h3><span class="header-section-number">3.3.4</span> Binary Outcomes</h3>
