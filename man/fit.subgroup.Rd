@@ -4,19 +4,29 @@
 \alias{fit.subgroup}
 \title{Fitting subgroup identification models}
 \usage{
-fit.subgroup(x, y, trt, propensity.func = NULL,
+fit.subgroup(
+  x,
+  y,
+  trt,
+  propensity.func = NULL,
   loss = c("sq_loss_lasso", "logistic_loss_lasso", "poisson_loss_lasso",
-  "cox_loss_lasso", "owl_logistic_loss_lasso",
-  "owl_logistic_flip_loss_lasso", "owl_hinge_loss", "owl_hinge_flip_loss",
-  "sq_loss_lasso_gam", "poisson_loss_lasso_gam", "logistic_loss_lasso_gam",
-  "sq_loss_gam", "poisson_loss_gam", "logistic_loss_gam",
-  "owl_logistic_loss_gam", "owl_logistic_flip_loss_gam",
-  "owl_logistic_loss_lasso_gam", "owl_logistic_flip_loss_lasso_gam",
-  "sq_loss_gbm", "poisson_loss_gbm", "logistic_loss_gbm", "cox_loss_gbm",  
-     "custom"), method = c("weighting", "a_learning"), match.id = NULL,
-  augment.func = NULL, fit.custom.loss = NULL, cutpoint = 0,
-  larger.outcome.better = TRUE, reference.trt = NULL, retcall = TRUE,
-  ...)
+    "cox_loss_lasso", "owl_logistic_loss_lasso", "owl_logistic_flip_loss_lasso",
+    "owl_hinge_loss", "owl_hinge_flip_loss", "sq_loss_lasso_gam",
+    "poisson_loss_lasso_gam", "logistic_loss_lasso_gam", "sq_loss_gam",
+    "poisson_loss_gam", "logistic_loss_gam", "owl_logistic_loss_gam",
+    "owl_logistic_flip_loss_gam", "owl_logistic_loss_lasso_gam",
+    "owl_logistic_flip_loss_lasso_gam", "sq_loss_gbm", "poisson_loss_gbm",
+    "logistic_loss_gbm", "cox_loss_gbm",      "custom"),
+  method = c("weighting", "a_learning"),
+  match.id = NULL,
+  augment.func = NULL,
+  fit.custom.loss = NULL,
+  cutpoint = 0,
+  larger.outcome.better = TRUE,
+  reference.trt = NULL,
+  retcall = TRUE,
+  ...
+)
 }
 \arguments{
 \item{x}{The design matrix (not including intercept term)}
@@ -517,17 +527,19 @@ subgrp.model.expo
 
 }
 \references{
+Huling. J.D. and Yu, M. (2021), Subgroup Identification Using the personalized Package.
+Journal of Statistical Software 98(5), 1-60. doi:10.18637/jss.v098.i05
+
 Chen, S., Tian, L., Cai, T. and Yu, M. (2017), A general statistical framework for subgroup identification
-and comparative treatment scoring. Biometrics. doi:10.1111/biom.12676 \url{http://onlinelibrary.wiley.com/doi/10.1111/biom.12676/abstract}
+and comparative treatment scoring. Biometrics. doi:10.1111/biom.12676 \url{https://onlinelibrary.wiley.com/doi/abs/10.1111/biom.12676}
 
 Xu, Y., Yu, M., Zhao, Y. Q., Li, Q., Wang, S., & Shao, J. (2015),
  Regularized outcome weighted subgroup identification for differential treatment effects. Biometrics, 71(3), 645-653.
- doi: 10.1111/biom.12322 \url{http://onlinelibrary.wiley.com/doi/10.1111/biom.12322/full}
+ doi: 10.1111/biom.12322 \url{https://onlinelibrary.wiley.com/doi/full/10.1111/biom.12322}
 
  Zhao, Y., Zeng, D., Rush, A. J., & Kosorok, M. R. (2012),
   Estimating individualized treatment rules using outcome weighted learning.
   Journal of the American Statistical Association, 107(499), 1106-1118. doi: 10.1080/01621459.2012.695674
-  \url{http://dx.doi.org/10.1080/01621459.2012.695674}
 }
 \seealso{
 \code{\link[personalized]{validate.subgroup}} for function which creates validation results for subgroup

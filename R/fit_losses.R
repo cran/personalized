@@ -15,6 +15,7 @@ get.pred.func <- function(fit.name, model, env = parent.frame())
             {
                 df.pred <- data.frame(cbind(1, x[,sel.idx[-1] - 1]))
                 colnames(df.pred) <- vnames
+                df.pred$trt_1n1 <- 1
                 -drop(predict(model, newdata = df.pred, type = "link"))
             }
         } else
@@ -23,6 +24,7 @@ get.pred.func <- function(fit.name, model, env = parent.frame())
             {
                 df.pred <- data.frame(cbind(1, x[,sel.idx[-1] - 1]))
                 colnames(df.pred) <- vnames
+                df.pred$trt_1n1 <- 1
                 drop(predict(model, newdata = df.pred, type = "link"))
             }
         }
@@ -413,6 +415,28 @@ fit_sq_loss_lasso_gam <- function(x, y, trt, n.trts, wts, family, match.id, inte
 
     list.dots$intercept <- intercept
 
+
+    if (is.factor(trt))
+    {
+        # drop any unused levels of trt
+        trt         <- droplevels(trt)
+        unique.trts <- levels(trt)
+    } else
+    {
+        unique.trts <- sort(unique(trt))
+    }
+
+
+    if (n.trts == 2)
+    {
+        trt.y <- trt
+
+        trt_1n1 <- ifelse(trt == unique.trts[2], 1, -1)
+    } else
+    {
+        stop("gam loss not yet available for multiple treatments scenarios.")
+    }
+
     ## Establish nfolds for cv.glmnet()
     if ("nfolds" %in% dot.names)
     {
@@ -494,7 +518,7 @@ fit_sq_loss_lasso_gam <- function(x, y, trt, n.trts, wts, family, match.id, inte
     }
 
     contin.vars <- sel.vnames[var.levels > 2]
-    binary.vars <- sel.vnames[var.levels == 2]
+    binary.vars <- sel.vnames[var.levels <= 2]
 
     # create formula for gam
     contin.formula <- binary.formula <- NULL
@@ -508,11 +532,19 @@ fit_sq_loss_lasso_gam <- function(x, y, trt, n.trts, wts, family, match.id, inte
     # create smoother for each continuous var
     if (length(contin.vars) > 0)
     {
-        form.cur <- paste0("s(", contin.vars, ")")
+        num_unique_values <- apply(x[,contin.vars,drop=FALSE], 2, function(x) length(unique(x)) )
+
+        form.cur <- paste0("s(", contin.vars, ", by = trt_1n1)")
+
+        form.cur[num_unique_values <= 10] <- paste0("s(", contin.vars[num_unique_values <= 10], ", by = trt_1n1, k=",
+                                                    num_unique_values[num_unique_values <= 10]-1, ")")
+
         contin.formula <- paste(form.cur, collapse = "+")
     }
 
     family.func <- gaussian()
+
+
 
     if (family == "cox")
     {
@@ -534,10 +566,15 @@ fit_sq_loss_lasso_gam <- function(x, y, trt, n.trts, wts, family, match.id, inte
     gam.formula <- as.formula(paste("y ~", rhs.formula))
 
     # create data frame
-    df <- data.frame(y = y, x = x[,sel.idx])
+    df <- data.frame(y = y, x = x[,sel.idx], trt_1n1 = trt_1n1)
+
+
     colnames(df) <- c("y", sel.vnames)
 
     vnames <- sel.vnames
+
+
+    oversmoothing_factor <- sqrt(ncol(x) / (length(contin.vars) + 1))
 
     # fit gam model:
     # only add in dots calls if they exist
@@ -545,12 +582,14 @@ fit_sq_loss_lasso_gam <- function(x, y, trt, n.trts, wts, family, match.id, inte
     {
         model <- do.call(gam, c(list(formula = gam.formula, data = df,
                                      weights = wts, family = family.func,
+                                     gamma = oversmoothing_factor, ## oversmooth since we're in a post-selection scenario
                                      drop.intercept = TRUE),
                                 list.dots[dots.idx.gam]))
     } else
     {
         model <- do.call(gam, list(formula = gam.formula, data = df,
                                    weights = wts, family = family.func,
+                                   gamma = oversmoothing_factor, ## oversmooth since we're in a post-selection scenario
                                    drop.intercept = TRUE))
     }
 
@@ -603,6 +642,28 @@ fit_sq_loss_gam <- function(x, y, trt, n.trts, wts, family, match.id, ...)
     #     colnames(x)[1] <- sel.vnames[1]
     # }
 
+
+    if (is.factor(trt))
+    {
+        # drop any unused levels of trt
+        trt         <- droplevels(trt)
+        unique.trts <- levels(trt)
+    } else
+    {
+        unique.trts <- sort(unique(trt))
+    }
+
+
+    if (n.trts == 2)
+    {
+        trt.y <- trt
+
+        trt_1n1 <- ifelse(trt == unique.trts[2], 1, -1)
+    } else
+    {
+        stop("gam loss not yet available for multiple treatments scenarios.")
+    }
+
     # find which variables are binary
     var.levels <- numeric(length(sel.idx))
     for (v in 1:length(sel.idx))
@@ -611,7 +672,7 @@ fit_sq_loss_gam <- function(x, y, trt, n.trts, wts, family, match.id, ...)
     }
 
     contin.vars <- sel.vnames[var.levels > 2]
-    binary.vars <- sel.vnames[var.levels == 2]
+    binary.vars <- sel.vnames[var.levels <= 2]
 
     # create formula for gam
     contin.formula <- binary.formula <- NULL
@@ -625,7 +686,13 @@ fit_sq_loss_gam <- function(x, y, trt, n.trts, wts, family, match.id, ...)
     # create smoother for each continuous var
     if (length(contin.vars) > 0)
     {
-        form.cur <- paste0("s(", contin.vars, ")")
+        num_unique_values <- apply(x[,contin.vars,drop=FALSE], 2, function(x) length(unique(x)) )
+
+        form.cur <- paste0("s(", contin.vars, ", by = trt_1n1)")
+
+        form.cur[num_unique_values <= 10] <- paste0("s(", contin.vars[num_unique_values <= 10], ", by = trt_1n1, k=",
+                                                    num_unique_values[num_unique_values <= 10]-1, ")")
+
         contin.formula <- paste(form.cur, collapse = "+")
     }
 
@@ -651,7 +718,7 @@ fit_sq_loss_gam <- function(x, y, trt, n.trts, wts, family, match.id, ...)
     gam.formula <- as.formula(paste("y ~", rhs.formula))
 
     # create data frame
-    df <- data.frame(y = y, x = x[,sel.idx])
+    df <- data.frame(y = y, x = x[,sel.idx], trt_1n1 = trt_1n1)
     colnames(df) <- c("y", sel.vnames)
 
     vnames <- sel.vnames

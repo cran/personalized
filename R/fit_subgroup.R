@@ -232,17 +232,19 @@
 #' results from fitted models, and \code{\link[personalized]{print.subgroup_fitted}}
 #' for arguments for printing options for \code{fit.subgroup()}.
 #' from \code{fit.subgroup}.
-#' @references Chen, S., Tian, L., Cai, T. and Yu, M. (2017), A general statistical framework for subgroup identification
-#' and comparative treatment scoring. Biometrics. doi:10.1111/biom.12676 \url{http://onlinelibrary.wiley.com/doi/10.1111/biom.12676/abstract}
+#' @references Huling. J.D. and Yu, M. (2021), Subgroup Identification Using the personalized Package.
+#' Journal of Statistical Software 98(5), 1-60. doi:10.18637/jss.v098.i05
+#'
+#' Chen, S., Tian, L., Cai, T. and Yu, M. (2017), A general statistical framework for subgroup identification
+#' and comparative treatment scoring. Biometrics. doi:10.1111/biom.12676 \url{https://onlinelibrary.wiley.com/doi/abs/10.1111/biom.12676}
 #'
 #' Xu, Y., Yu, M., Zhao, Y. Q., Li, Q., Wang, S., & Shao, J. (2015),
 #'  Regularized outcome weighted subgroup identification for differential treatment effects. Biometrics, 71(3), 645-653.
-#'  doi: 10.1111/biom.12322 \url{http://onlinelibrary.wiley.com/doi/10.1111/biom.12322/full}
+#'  doi: 10.1111/biom.12322 \url{https://onlinelibrary.wiley.com/doi/full/10.1111/biom.12322}
 #'
 #'  Zhao, Y., Zeng, D., Rush, A. J., & Kosorok, M. R. (2012),
 #'   Estimating individualized treatment rules using outcome weighted learning.
 #'   Journal of the American Statistical Association, 107(499), 1106-1118. doi: 10.1080/01621459.2012.695674
-#'   \url{http://dx.doi.org/10.1080/01621459.2012.695674}
 #' @return An object of class \code{"subgroup_fitted"}.
 #' \item{predict}{A function that returns predictions of the covariate-conditional treatment effects }
 #' \item{model}{An object returned by the underlying fitting function used. For example, if the lasso use used to fit
@@ -868,6 +870,8 @@ fit.subgroup <- function(x,
             }
         }
     }
+
+    attr(trt, "unique.trts") <- unique.trts
 
 
     extra.args <- NULL

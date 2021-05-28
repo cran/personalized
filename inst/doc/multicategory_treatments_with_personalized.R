@@ -1,7 +1,7 @@
-## ----loadpkg, message=FALSE, warning=FALSE-------------------------------
+## ----loadpkg, message=FALSE, warning=FALSE------------------------------------
 library(personalized)
 
-## ----sim_three_trt_data--------------------------------------------------
+## ----sim_three_trt_data-------------------------------------------------------
 set.seed(123)
 n.obs  <- 250
 n.vars <- 15
@@ -41,11 +41,11 @@ xbeta <- xbeta +
 y <- xbeta + rnorm(n.obs, sd = 2)
 
 
-## ----display_mult_trt_vector---------------------------------------------
+## ----display_mult_trt_vector--------------------------------------------------
 trt[1:5]
 table(trt)
 
-## ----define_multi_propens------------------------------------------------
+## ----define_multi_propens-----------------------------------------------------
 propensity.multinom.lasso <- function(x, trt)
 {
     if (!is.factor(trt)) trt <- as.factor(trt)
@@ -65,7 +65,7 @@ propensity.multinom.lasso <- function(x, trt)
 ## ----check_overlap_multitreat, fig.cap = "Propensity score overlap plot for multi-category treatment data."----
 check.overlap(x = x, trt = trt, propensity.multinom.lasso)
 
-## ----fit_multi_trt_model-------------------------------------------------
+## ----fit_multi_trt_model------------------------------------------------------
 set.seed(123)
 subgrp.multi <- fit.subgroup(x = x, y = y,
     trt = trt, propensity.func = propensity.multinom.lasso,
@@ -78,7 +78,7 @@ summary(subgrp.multi)
 pl <- plot(subgrp.multi)
 pl + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-## ----validate_multi_trt_model, eval = TRUE-------------------------------
+## ----validate_multi_trt_model, eval = TRUE------------------------------------
 set.seed(123)
 validation.multi <- validate.subgroup(subgrp.multi, 
     B = 5,  # specify the number of replications
@@ -91,7 +91,7 @@ print(validation.multi, digits = 2, sample.pct = TRUE)
 plv <- plot(validation.multi)
 plv + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-## ----multinom_propens----------------------------------------------------
+## ----multinom_propens---------------------------------------------------------
 propensity.func.multinom <- function(x, trt)
 {
     df <- data.frame(trt = trt, x)
@@ -114,7 +114,7 @@ propensity.func.multinom <- function(x, trt)
     probs
 }
 
-## ----multinom_propens2---------------------------------------------------
+## ----multinom_propens2--------------------------------------------------------
 propensity.func.multinom <- function(x, trt)
 {
     require(nnet)

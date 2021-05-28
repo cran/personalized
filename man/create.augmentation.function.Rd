@@ -4,8 +4,12 @@
 \alias{create.augmentation.function}
 \title{Creation of augmentation functions}
 \usage{
-create.augmentation.function(family, crossfit = TRUE,
-  nfolds.crossfit = 10, cv.glmnet.args = NULL)
+create.augmentation.function(
+  family,
+  crossfit = TRUE,
+  nfolds.crossfit = 10,
+  cv.glmnet.args = NULL
+)
 }
 \arguments{
 \item{family}{The response type (see options in \code{\link[glmnet]{glmnet}} help file)}
@@ -60,7 +64,7 @@ prop.func <- create.propensity.function(crossfit = TRUE,
                                         nfolds.crossfit = 10,
                                         cv.glmnet.args = list(type.measure = "auc",
                                                               nfolds = 5))
-
+\dontrun{
 subgrp.model <- fit.subgroup(x = x, y = y,
                              trt = trt01,
                              propensity.func = prop.func,
@@ -69,6 +73,7 @@ subgrp.model <- fit.subgroup(x = x, y = y,
                              nfolds = 10)    # option for cv.glmnet (for ITR estimation)
 
 summary(subgrp.model)
+}
 
 }
 \references{
