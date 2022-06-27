@@ -15,8 +15,7 @@ fit.subgroup(
     "poisson_loss_lasso_gam", "logistic_loss_lasso_gam", "sq_loss_gam",
     "poisson_loss_gam", "logistic_loss_gam", "owl_logistic_loss_gam",
     "owl_logistic_flip_loss_gam", "owl_logistic_loss_lasso_gam",
-    "owl_logistic_flip_loss_lasso_gam", "sq_loss_gbm", "poisson_loss_gbm",
-    "logistic_loss_gbm", "cox_loss_gbm",      "custom"),
+    "owl_logistic_flip_loss_lasso_gam", "sq_loss_xgboost", "custom"),
   method = c("weighting", "a_learning"),
   match.id = NULL,
   augment.func = NULL,
@@ -48,9 +47,9 @@ the logistic loss: M(y, v) = y * log(1 + exp\{-v\}), and all options starting wi
 All options ending with \code{lasso} have a lasso penalty added to the loss for variable selection. \code{sq_loss_lasso_gam}
 and \code{logistic_loss_lasso_gam} first use the lasso to select variables and then fit a generalized additive model
 with nonparametric additive terms for each selected variable. \code{sq_loss_gam} involves a squared error loss with a generalized additive model and no variable selection.
-\code{sq_loss_gbm} involves a squared error loss with a gradient-boosted decision trees model for the benefit score; this
-allows for flexible estimation using machine learning and can be useful when the underlying treatment-covariate interaction
-is complex.
+\code{sq_loss_xgboost} involves a squared error loss with a gradient-boosted decision trees model using \code{xgboost} for the benefit score; this
+allows for flexible estimation using machine learning and can be useful when the underlying treatment-covariate interaction is complex. Must specify
+\code{params}, \code{nrounds}, \code{nfold}, and optionally, \code{early_stopping_rounds}; see \code{\link[xgboost]{xgb.train}} for details
 \itemize{
     \item{\strong{Continuous Outcomes}}
     \itemize{
@@ -65,7 +64,7 @@ is complex.
         \item{\code{"owl_logistic_flip_loss_gam"}} { - M(y, v) = |y|log(1 + exp\{-sign(y)v\}) with generalized additive model fit on all variables}
         \item{\code{"owl_logistic_loss_lasso_gam"}} { - M(y, v) = ylog(1 + exp\{-v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
         \item{\code{"owl_logistic_flip_loss_lasso_gam"}} { - M(y, v) = |y|log(1 + exp\{-sign(y)v\}) with variables selected by lasso penalty and generalized additive model fit on the selected variables}
-        \item{\code{"sq_loss_gbm"}}{ - M(y, v) = (v - y) ^ 2 with gradient-boosted decision trees model}
+        \item{\code{"sq_loss_xgboost"}}{ - M(y, v) = (v - y) ^ 2 with gradient-boosted decision trees model}
     }
     \item{\strong{Binary Outcomes}}
     \itemize{
@@ -73,7 +72,6 @@ is complex.
         \item{\code{"logistic_loss_lasso"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with with linear model and lasso penalty}
         \item{\code{"logistic_loss_lasso_gam"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with variables selected by lasso penalty and generalized additive model fit on the selected variables}
         \item{\code{"logistic_loss_gam"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with generalized additive model fit on all variables}
-        \item{\code{"logistic_loss_gbm"}}{ - M(y, v) = -[yv - log(1 + exp\{-v\})] with gradient-boosted decision trees model}
     }
     \item{\strong{Count Outcomes}}
     \itemize{
@@ -81,12 +79,10 @@ is complex.
         \item{\code{"poisson_loss_lasso"}}{ - M(y, v) = -[yv - exp(v)] with with linear model and lasso penalty}
         \item{\code{"poisson_loss_lasso_gam"}}{ - M(y, v) = -[yv - exp(v)] with variables selected by lasso penalty and generalized additive model fit on the selected variables}
         \item{\code{"poisson_loss_gam"}}{ - M(y, v) = -[yv - exp(v)] with generalized additive model fit on all variables}
-        \item{\code{"poisson_loss_gbm"}}{ - M(y, v) = -[yv - exp(v)] with gradient-boosted decision trees model}
     }
     \item{\strong{Time-to-Event Outcomes}}
     \itemize{
         \item{\code{"cox_loss_lasso"}}{ - M corresponds to the negative partial likelihood of the cox model with linear model and additionally a lasso penalty}
-        \item{\code{"cox_loss_gbm"}}{ - M corresponds to the negative partial likelihood of the cox model with gradient-boosted decision trees model}
     }
 }}
 
@@ -357,7 +353,9 @@ subgrp.model <- fit.subgroup(x = x, y = y,
                            trt = trt01,
                            propensity.func = prop.func,
                            loss   = "sq_loss_lasso",
-                           nfolds = 10)              # option for cv.glmnet
+                           # option for cv.glmnet,
+                           # better to use 'nfolds=10'
+                           nfolds = 3)
 
 summary(subgrp.model)
 
@@ -409,7 +407,9 @@ subgrp.model.aug <- fit.subgroup(x = x, y = y,
                            propensity.func = prop.func,
                            augment.func    = augment.func,
                            loss   = "sq_loss_lasso",
-                           nfolds = 10)              # option for cv.glmnet
+                           # option for cv.glmnet,
+                           # better to use 'nfolds=10'
+                           nfolds = 3)              # option for cv.glmnet
 
 summary(subgrp.model.aug)
 }
@@ -422,7 +422,7 @@ subgrp.model.bin <- fit.subgroup(x = x, y = y.binary,
                            propensity.func = prop.func,
                            loss   = "logistic_loss_lasso",
                            type.measure = "auc",    # option for cv.glmnet
-                           nfolds = 5)              # option for cv.glmnet
+                           nfolds = 3)              # option for cv.glmnet
 
 subgrp.model.bin
 
@@ -435,7 +435,7 @@ subgrp.model.poisson <- fit.subgroup(x = x, y = y.count,
                            propensity.func = prop.func,
                            loss   = "poisson_loss_lasso",
                            type.measure = "mse",    # option for cv.glmnet
-                           nfolds = 5)              # option for cv.glmnet
+                           nfolds = 3)              # option for cv.glmnet
 
 subgrp.model.poisson
 
@@ -448,7 +448,7 @@ subgrp.model.cox <- fit.subgroup(x = x, y = Surv(y.time.to.event, status),
                            trt = trt01,
                            propensity.func = prop.func,
                            loss   = "cox_loss_lasso",
-                           nfolds = 5)              # option for cv.glmnet
+                           nfolds = 3)              # option for cv.glmnet
 
 subgrp.model.cox
 }
@@ -531,11 +531,11 @@ Huling. J.D. and Yu, M. (2021), Subgroup Identification Using the personalized P
 Journal of Statistical Software 98(5), 1-60. doi:10.18637/jss.v098.i05
 
 Chen, S., Tian, L., Cai, T. and Yu, M. (2017), A general statistical framework for subgroup identification
-and comparative treatment scoring. Biometrics. doi:10.1111/biom.12676 \url{https://onlinelibrary.wiley.com/doi/abs/10.1111/biom.12676}
+and comparative treatment scoring. Biometrics. doi:10.1111/biom.12676 \doi{10.1111/biom.12676}
 
 Xu, Y., Yu, M., Zhao, Y. Q., Li, Q., Wang, S., & Shao, J. (2015),
  Regularized outcome weighted subgroup identification for differential treatment effects. Biometrics, 71(3), 645-653.
- doi: 10.1111/biom.12322 \url{https://onlinelibrary.wiley.com/doi/full/10.1111/biom.12322}
+ doi: 10.1111/biom.12322 \doi{10.1111/biom.12322}
 
  Zhao, Y., Zeng, D., Rush, A. J., & Kosorok, M. R. (2012),
   Estimating individualized treatment rules using outcome weighted learning.

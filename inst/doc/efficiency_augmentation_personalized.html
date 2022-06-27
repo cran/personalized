@@ -12,11 +12,23 @@
 
 <meta name="author" content="Jared Huling" />
 
-<meta name="date" content="2021-05-28" />
+<meta name="date" content="2022-06-27" />
 
-<title>Improving Estimation Efficiency via Augmentation and Propensity Score Utilities</title>
+<title>Utilities for Improving Estimation Efficiency via Augmentation and for Propensity Score Estimation</title>
 
-<script src="data:application/javascript;base64,Ly8gUGFuZG9jIDIuOSBhZGRzIGF0dHJpYnV0ZXMgb24gYm90aCBoZWFkZXIgYW5kIGRpdi4gV2UgcmVtb3ZlIHRoZSBmb3JtZXIgKHRvCi8vIGJlIGNvbXBhdGlibGUgd2l0aCB0aGUgYmVoYXZpb3Igb2YgUGFuZG9jIDwgMi44KS4KZG9jdW1lbnQuYWRkRXZlbnRMaXN0ZW5lcignRE9NQ29udGVudExvYWRlZCcsIGZ1bmN0aW9uKGUpIHsKICB2YXIgaHMgPSBkb2N1bWVudC5xdWVyeVNlbGVjdG9yQWxsKCJkaXYuc2VjdGlvbltjbGFzcyo9J2xldmVsJ10gPiA6Zmlyc3QtY2hpbGQiKTsKICB2YXIgaSwgaCwgYTsKICBmb3IgKGkgPSAwOyBpIDwgaHMubGVuZ3RoOyBpKyspIHsKICAgIGggPSBoc1tpXTsKICAgIGlmICghL15oWzEtNl0kL2kudGVzdChoLnRhZ05hbWUpKSBjb250aW51ZTsgIC8vIGl0IHNob3VsZCBiZSBhIGhlYWRlciBoMS1oNgogICAgYSA9IGguYXR0cmlidXRlczsKICAgIHdoaWxlIChhLmxlbmd0aCA+IDApIGgucmVtb3ZlQXR0cmlidXRlKGFbMF0ubmFtZSk7CiAgfQp9KTsK"></script>
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
 
 <style type="text/css">
   code{white-space: pre-wrap;}
@@ -26,6 +38,7 @@
   div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
   ul.task-list{list-style: none;}
     </style>
+
 
 
 <style type="text/css">
@@ -127,7 +140,187 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 
 
-<link rel="stylesheet" href="data:text/css,body%20%7B%0Abackground%2Dcolor%3A%20%23fff%3B%0Amargin%3A%201em%20auto%3B%0Amax%2Dwidth%3A%20700px%3B%0Aoverflow%3A%20visible%3B%0Apadding%2Dleft%3A%202em%3B%0Apadding%2Dright%3A%202em%3B%0Afont%2Dfamily%3A%20%22Open%20Sans%22%2C%20%22Helvetica%20Neue%22%2C%20Helvetica%2C%20Arial%2C%20sans%2Dserif%3B%0Afont%2Dsize%3A%2014px%3B%0Aline%2Dheight%3A%201%2E35%3B%0A%7D%0A%23TOC%20%7B%0Aclear%3A%20both%3B%0Amargin%3A%200%200%2010px%2010px%3B%0Apadding%3A%204px%3B%0Awidth%3A%20400px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Aborder%2Dradius%3A%205px%3B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Afont%2Dsize%3A%2013px%3B%0Aline%2Dheight%3A%201%2E3%3B%0A%7D%0A%23TOC%20%2Etoctitle%20%7B%0Afont%2Dweight%3A%20bold%3B%0Afont%2Dsize%3A%2015px%3B%0Amargin%2Dleft%3A%205px%3B%0A%7D%0A%23TOC%20ul%20%7B%0Apadding%2Dleft%3A%2040px%3B%0Amargin%2Dleft%3A%20%2D1%2E5em%3B%0Amargin%2Dtop%3A%205px%3B%0Amargin%2Dbottom%3A%205px%3B%0A%7D%0A%23TOC%20ul%20ul%20%7B%0Amargin%2Dleft%3A%20%2D2em%3B%0A%7D%0A%23TOC%20li%20%7B%0Aline%2Dheight%3A%2016px%3B%0A%7D%0Atable%20%7B%0Amargin%3A%201em%20auto%3B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dcolor%3A%20%23DDDDDD%3B%0Aborder%2Dstyle%3A%20outset%3B%0Aborder%2Dcollapse%3A%20collapse%3B%0A%7D%0Atable%20th%20%7B%0Aborder%2Dwidth%3A%202px%3B%0Apadding%3A%205px%3B%0Aborder%2Dstyle%3A%20inset%3B%0A%7D%0Atable%20td%20%7B%0Aborder%2Dwidth%3A%201px%3B%0Aborder%2Dstyle%3A%20inset%3B%0Aline%2Dheight%3A%2018px%3B%0Apadding%3A%205px%205px%3B%0A%7D%0Atable%2C%20table%20th%2C%20table%20td%20%7B%0Aborder%2Dleft%2Dstyle%3A%20none%3B%0Aborder%2Dright%2Dstyle%3A%20none%3B%0A%7D%0Atable%20thead%2C%20table%20tr%2Eeven%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Ap%20%7B%0Amargin%3A%200%2E5em%200%3B%0A%7D%0Ablockquote%20%7B%0Abackground%2Dcolor%3A%20%23f6f6f6%3B%0Apadding%3A%200%2E25em%200%2E75em%3B%0A%7D%0Ahr%20%7B%0Aborder%2Dstyle%3A%20solid%3B%0Aborder%3A%20none%3B%0Aborder%2Dtop%3A%201px%20solid%20%23777%3B%0Amargin%3A%2028px%200%3B%0A%7D%0Adl%20%7B%0Amargin%2Dleft%3A%200%3B%0A%7D%0Adl%20dd%20%7B%0Amargin%2Dbottom%3A%2013px%3B%0Amargin%2Dleft%3A%2013px%3B%0A%7D%0Adl%20dt%20%7B%0Afont%2Dweight%3A%20bold%3B%0A%7D%0Aul%20%7B%0Amargin%2Dtop%3A%200%3B%0A%7D%0Aul%20li%20%7B%0Alist%2Dstyle%3A%20circle%20outside%3B%0A%7D%0Aul%20ul%20%7B%0Amargin%2Dbottom%3A%200%3B%0A%7D%0Apre%2C%20code%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0Aborder%2Dradius%3A%203px%3B%0Acolor%3A%20%23333%3B%0Awhite%2Dspace%3A%20pre%2Dwrap%3B%20%0A%7D%0Apre%20%7B%0Aborder%2Dradius%3A%203px%3B%0Amargin%3A%205px%200px%2010px%200px%3B%0Apadding%3A%2010px%3B%0A%7D%0Apre%3Anot%28%5Bclass%5D%29%20%7B%0Abackground%2Dcolor%3A%20%23f7f7f7%3B%0A%7D%0Acode%20%7B%0Afont%2Dfamily%3A%20Consolas%2C%20Monaco%2C%20%27Courier%20New%27%2C%20monospace%3B%0Afont%2Dsize%3A%2085%25%3B%0A%7D%0Ap%20%3E%20code%2C%20li%20%3E%20code%20%7B%0Apadding%3A%202px%200px%3B%0A%7D%0Adiv%2Efigure%20%7B%0Atext%2Dalign%3A%20center%3B%0A%7D%0Aimg%20%7B%0Abackground%2Dcolor%3A%20%23FFFFFF%3B%0Apadding%3A%202px%3B%0Aborder%3A%201px%20solid%20%23DDDDDD%3B%0Aborder%2Dradius%3A%203px%3B%0Aborder%3A%201px%20solid%20%23CCCCCC%3B%0Amargin%3A%200%205px%3B%0A%7D%0Ah1%20%7B%0Amargin%2Dtop%3A%200%3B%0Afont%2Dsize%3A%2035px%3B%0Aline%2Dheight%3A%2040px%3B%0A%7D%0Ah2%20%7B%0Aborder%2Dbottom%3A%204px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Apadding%2Dbottom%3A%202px%3B%0Afont%2Dsize%3A%20145%25%3B%0A%7D%0Ah3%20%7B%0Aborder%2Dbottom%3A%202px%20solid%20%23f7f7f7%3B%0Apadding%2Dtop%3A%2010px%3B%0Afont%2Dsize%3A%20120%25%3B%0A%7D%0Ah4%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23f7f7f7%3B%0Amargin%2Dleft%3A%208px%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Ah5%2C%20h6%20%7B%0Aborder%2Dbottom%3A%201px%20solid%20%23ccc%3B%0Afont%2Dsize%3A%20105%25%3B%0A%7D%0Aa%20%7B%0Acolor%3A%20%230033dd%3B%0Atext%2Ddecoration%3A%20none%3B%0A%7D%0Aa%3Ahover%20%7B%0Acolor%3A%20%236666ff%3B%20%7D%0Aa%3Avisited%20%7B%0Acolor%3A%20%23800080%3B%20%7D%0Aa%3Avisited%3Ahover%20%7B%0Acolor%3A%20%23BB00BB%3B%20%7D%0Aa%5Bhref%5E%3D%22http%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0Aa%5Bhref%5E%3D%22https%3A%22%5D%20%7B%0Atext%2Ddecoration%3A%20underline%3B%20%7D%0A%0Acode%20%3E%20span%2Ekw%20%7B%20color%3A%20%23555%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Edt%20%7B%20color%3A%20%23902000%3B%20%7D%20%0Acode%20%3E%20span%2Edv%20%7B%20color%3A%20%2340a070%3B%20%7D%20%0Acode%20%3E%20span%2Ebn%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Efl%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Ech%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Est%20%7B%20color%3A%20%23d14%3B%20%7D%20%0Acode%20%3E%20span%2Eco%20%7B%20color%3A%20%23888888%3B%20font%2Dstyle%3A%20italic%3B%20%7D%20%0Acode%20%3E%20span%2Eot%20%7B%20color%3A%20%23007020%3B%20%7D%20%0Acode%20%3E%20span%2Eal%20%7B%20color%3A%20%23ff0000%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Efu%20%7B%20color%3A%20%23900%3B%20font%2Dweight%3A%20bold%3B%20%7D%20%0Acode%20%3E%20span%2Eer%20%7B%20color%3A%20%23a61717%3B%20background%2Dcolor%3A%20%23e3d2d2%3B%20%7D%20%0A" type="text/css" />
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
 
 
 
@@ -139,9 +332,10 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 
 
-<h1 class="title toc-ignore">Improving Estimation Efficiency via Augmentation and Propensity Score Utilities</h1>
+<h1 class="title toc-ignore">Utilities for Improving Estimation
+Efficiency via Augmentation and for Propensity Score Estimation</h1>
 <h4 class="author">Jared Huling</h4>
-<h4 class="date">2021-05-28</h4>
+<h4 class="date">2022-06-27</h4>
 
 
 <div id="TOC">
@@ -149,50 +343,76 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li><a href="#efficiency-augmentation"><span class="toc-section-number">1</span> Efficiency augmentation</a></li>
 <li><a href="#propensity-score-utilities"><span class="toc-section-number">2</span> Propensity score utilities</a></li>
 <li><a href="#augmentation-utilities"><span class="toc-section-number">3</span> Augmentation utilities</a></li>
-<li><a href="#comparing-performance-with-augmentation"><span class="toc-section-number">4</span> Comparing performance with augmentation</a></li>
+<li><a href="#comparing-performance-with-augmentation"><span class="toc-section-number">4</span> Comparing performance with
+augmentation</a></li>
 </ul>
 </div>
 
 <div id="efficiency-augmentation" class="section level1" number="1">
-<h1 number="1"><span class="header-section-number">1</span> Efficiency augmentation</h1>
-<p>To demonstrate how to use efficiency augmentation and the propensity score utilities available in the <code>personalized</code> package, we simulate data with two treatments. The treatment assignments are based on covariates and hence mimic an observational setting with no unmeasured confounders.</p>
+<h1><span class="header-section-number">1</span> Efficiency
+augmentation</h1>
+<p>To demonstrate how to use efficiency augmentation and the propensity
+score utilities available in the <code>personalized</code> package, we
+simulate data with two treatments. The treatment assignments are based
+on covariates and hence mimic an observational setting with no
+unmeasured confounders.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(personalized)</span></code></pre></div>
-<p>In this simulation, the treatment assignment depends on covariates and hence we must model the propensity score <span class="math inline">\(\pi(x) = Pr(T = 1 | X = x)\)</span>. In this simulation we will assume that larger values of the outcome are better.</p>
+<p>In this simulation, the treatment assignment depends on covariates
+and hence we must model the propensity score <span class="math inline">\(\pi(x) = Pr(T = 1 | X = x)\)</span>. In this
+simulation we will assume that larger values of the outcome are
+better.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(personalized)</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1</span>)</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>n.obs  <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>n.vars <span class="ot">&lt;-</span> <span class="dv">50</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>n.obs  <span class="ot">&lt;-</span> <span class="dv">500</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>n.vars <span class="ot">&lt;-</span> <span class="dv">10</span></span>
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="fu">rnorm</span>(n.obs <span class="sc">*</span> n.vars, <span class="at">sd =</span> <span class="dv">3</span>), n.obs, n.vars)</span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="co"># simulate non-randomized treatment</span></span>
-<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>xbetat   <span class="ot">&lt;-</span> <span class="fl">0.5</span> <span class="sc">+</span> <span class="fl">0.25</span> <span class="sc">*</span> x[,<span class="dv">21</span>] <span class="sc">-</span> <span class="fl">0.25</span> <span class="sc">*</span> x[,<span class="dv">41</span>]</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>xbetat   <span class="ot">&lt;-</span> <span class="fl">0.5</span> <span class="sc">+</span> <span class="fl">0.25</span> <span class="sc">*</span> x[,<span class="dv">9</span>] <span class="sc">-</span> <span class="fl">0.25</span> <span class="sc">*</span> x[,<span class="dv">1</span>]</span>
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>trt.prob <span class="ot">&lt;-</span> <span class="fu">exp</span>(xbetat) <span class="sc">/</span> (<span class="dv">1</span> <span class="sc">+</span> <span class="fu">exp</span>(xbetat))</span>
 <span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>trt      <span class="ot">&lt;-</span> <span class="fu">rbinom</span>(n.obs, <span class="dv">1</span>, <span class="at">prob =</span> trt.prob)</span>
 <span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="co"># simulate delta</span></span>
-<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>delta <span class="ot">&lt;-</span> (<span class="fl">0.5</span> <span class="sc">+</span> x[,<span class="dv">2</span>] <span class="sc">-</span> <span class="fl">0.5</span> <span class="sc">*</span> x[,<span class="dv">3</span>] <span class="sc">-</span> <span class="dv">1</span> <span class="sc">*</span> x[,<span class="dv">11</span>] <span class="sc">+</span> <span class="dv">1</span> <span class="sc">*</span> x[,<span class="dv">1</span>] <span class="sc">*</span> x[,<span class="dv">12</span>] )</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>delta <span class="ot">&lt;-</span> (<span class="fl">0.5</span> <span class="sc">+</span> x[,<span class="dv">2</span>] <span class="sc">-</span> <span class="fl">0.5</span> <span class="sc">*</span> x[,<span class="dv">3</span>] <span class="sc">-</span> <span class="dv">1</span> <span class="sc">*</span> x[,<span class="dv">1</span>] <span class="sc">+</span> <span class="dv">1</span> <span class="sc">*</span> x[,<span class="dv">1</span>] <span class="sc">*</span> x[,<span class="dv">4</span>] )</span>
 <span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="co"># simulate main effects g(X)</span></span>
-<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>xbeta <span class="ot">&lt;-</span> x[,<span class="dv">1</span>] <span class="sc">+</span> x[,<span class="dv">11</span>] <span class="sc">-</span> <span class="dv">2</span> <span class="sc">*</span> x[,<span class="dv">12</span>]<span class="sc">^</span><span class="dv">2</span> <span class="sc">+</span> x[,<span class="dv">13</span>] <span class="sc">+</span> <span class="fl">0.5</span> <span class="sc">*</span> x[,<span class="dv">15</span>] <span class="sc">^</span> <span class="dv">2</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>xbeta <span class="ot">&lt;-</span> <span class="dv">2</span> <span class="sc">*</span> x[,<span class="dv">1</span>] <span class="sc">+</span> <span class="dv">3</span> <span class="sc">*</span> x[,<span class="dv">4</span>] <span class="sc">-</span> <span class="fl">0.25</span> <span class="sc">*</span> x[,<span class="dv">2</span>]<span class="sc">^</span><span class="dv">2</span> <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> x[,<span class="dv">3</span>] <span class="sc">+</span> <span class="fl">0.25</span> <span class="sc">*</span> x[,<span class="dv">5</span>] <span class="sc">^</span> <span class="dv">2</span></span>
 <span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>xbeta <span class="ot">&lt;-</span> xbeta <span class="sc">+</span> delta <span class="sc">*</span> (<span class="dv">2</span> <span class="sc">*</span> trt <span class="sc">-</span> <span class="dv">1</span>)</span>
 <span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="co"># simulate continuous outcomes</span></span>
-<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">drop</span>(xbeta) <span class="sc">+</span> <span class="fu">rnorm</span>(n.obs)</span></code></pre></div>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">drop</span>(xbeta) <span class="sc">+</span> <span class="fu">rnorm</span>(n.obs, <span class="at">sd =</span> <span class="dv">3</span>)</span></code></pre></div>
 </div>
 <div id="propensity-score-utilities" class="section level1" number="2">
-<h1 number="2"><span class="header-section-number">2</span> Propensity score utilities</h1>
-<p>Estimation of the propensity score is a fundamental aspect of the estimation of individualized treatment rules (ITRs). The <code>personalized</code> package offers support tools for construction of the propensity score function used by the <code>fit.subgroup()</code> function. The support is via the <code>create.propensity.function()</code> function. This tool allows for estimation of the propensity score in high dimensions via <code>glmnet</code>. In high dimensions it can be important to account for regularization bias via cross-fitting (<a href="https://arxiv.org/abs/1608.00060" class="uri">https://arxiv.org/abs/1608.00060</a>); the <code>create.propensity.function()</code> offers a cross-fitting approach for high-dimensional propensity score estimation. A basic usage of this function with cross-fitting (with 10 folds) is as follows:</p>
+<h1><span class="header-section-number">2</span> Propensity score
+utilities</h1>
+<p>Estimation of the propensity score is a fundamental aspect of the
+estimation of individualized treatment rules (ITRs). The
+<code>personalized</code> package offers support tools for construction
+of the propensity score function used by the <code>fit.subgroup()</code>
+function. The support is via the
+<code>create.propensity.function()</code> function. This tool allows for
+estimation of the propensity score in high dimensions via
+<code>glmnet</code>. In high dimensions it can be important to account
+for regularization bias via cross-fitting (<a href="https://arxiv.org/abs/1608.00060" class="uri">https://arxiv.org/abs/1608.00060</a>); the
+<code>create.propensity.function()</code> offers a cross-fitting
+approach for high-dimensional propensity score estimation. A basic usage
+of this function with cross-fitting (with 4 folds; normally we would set
+this larger, but have reduced it to make computation time shorter) is as
+follows:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># arguments can be passed to cv.glmnet via `cv.glmnet.args`</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>prop.func <span class="ot">&lt;-</span> <span class="fu">create.propensity.function</span>(<span class="at">crossfit =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">nfolds.crossfit =</span> <span class="dv">10</span>,</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">cv.glmnet.args =</span> <span class="fu">list</span>(<span class="at">type.measure =</span> <span class="st">&quot;auc&quot;</span>, <span class="at">nfolds =</span> <span class="dv">5</span>))</span></code></pre></div>
-<p><code>prop.func</code> can then be passed to <code>fit.subgroup()</code> as follows:</p>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">nfolds.crossfit =</span> <span class="dv">4</span>,</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">cv.glmnet.args =</span> <span class="fu">list</span>(<span class="at">type.measure =</span> <span class="st">&quot;auc&quot;</span>, <span class="at">nfolds =</span> <span class="dv">3</span>))</span></code></pre></div>
+<p><code>prop.func</code> can then be passed to
+<code>fit.subgroup()</code> as follows:</p>
+<p>We have set <code>nfolds</code> to 3 for computational reasons; it
+should generally be higher, such as 10.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>subgrp.model <span class="ot">&lt;-</span> <span class="fu">fit.subgroup</span>(<span class="at">x =</span> x, <span class="at">y =</span> y,</span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>                             <span class="at">trt =</span> trt,</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>                             <span class="at">propensity.func =</span> prop.func,</span>
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>                             <span class="at">loss   =</span> <span class="st">&quot;sq_loss_lasso&quot;</span>,</span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>                             <span class="at">nfolds =</span> <span class="dv">10</span>)    <span class="co"># option for cv.glmnet (for ITR estimation)</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>                             <span class="at">nfolds =</span> <span class="dv">3</span>)    <span class="co"># option for cv.glmnet (for ITR estimation)</span></span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(subgrp.model)</span></code></pre></div>
 <pre><code>## family:    gaussian 
@@ -206,15 +426,15 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 ## Trt recom = 1*I(f(x)&gt;c)+0*I(f(x)&lt;=c) where c is &#39;cutpoint&#39;
 ## 
 ## Average Outcomes:
-##                 Recommended 0      Recommended 1
-## Received 0 -10.3946 (n = 115) -17.6061 (n = 285)
-## Received 1 -14.9248 (n = 368) -11.4371 (n = 232)
+##                Recommended 0     Recommended 1
+## Received 0  8.2176 (n = 136) -12.7821 (n = 69)
+## Received 1 -1.7832 (n = 143) -0.4186 (n = 152)
 ## 
 ## Treatment effects conditional on subgroups:
 ## Est of E[Y|T=0,Recom=0]-E[Y|T=/=0,Recom=0] 
-##                           4.5301 (n = 483) 
+##                          10.0008 (n = 279) 
 ## Est of E[Y|T=1,Recom=1]-E[Y|T=/=1,Recom=1] 
-##                            6.169 (n = 517) 
+##                          12.3635 (n = 221) 
 ## 
 ## NOTE: The above average outcomes are biased estimates of
 ##       the expected outcomes conditional on subgroups. 
@@ -224,40 +444,53 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 ## 
 ## Benefit score quantiles (f(X) for 1 vs 0): 
 ##       0%      25%      50%      75%     100% 
-## -16.3571  -3.0735   0.1874   3.6822  14.9558 
+## -14.3195  -3.7348  -0.6998   2.0439  13.0446 
 ## 
 ## ---------------------------------------------------
 ## 
 ## Summary of individual treatment effects: 
 ## E[Y|T=1, X] - E[Y|T=0, X]
 ## 
-##     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
-## -32.7141  -6.1471   0.3749   0.8080   7.3644  29.9116 
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+## -28.639  -7.470  -1.400  -1.717   4.088  26.089 
 ## 
 ## ---------------------------------------------------
 ## 
-## 8 out of 50 interactions selected in total by the lasso (cross validation criterion).
+## 4 out of 10 interactions selected in total by the lasso (cross validation criterion).
 ## 
 ## The first estimate is the treatment main effect, which is always selected. 
 ## Any other variables selected represent treatment-covariate interactions.
 ## 
-##            Trt1     V2      V3     V4    V12     V21    V29    V36    V41
-## Estimate 0.6779 0.7138 -0.3185 -8e-04 -0.017 -1.1168 -0.012 0.2883 0.7512</code></pre>
+##            Trt1      V1    V2      V3     V8
+## Estimate -0.651 -1.0653 0.834 -0.4833 0.1437</code></pre>
 </div>
 <div id="augmentation-utilities" class="section level1" number="3">
-<h1 number="3"><span class="header-section-number">3</span> Augmentation utilities</h1>
-<p>Efficiency in estimating ITRs can be improved by including an augmentation term. The optimal augmentation term generally is a function of the main effects of the full outcome regression model marginalized over the treatment. Especially in high dimensions, regularization bias can potentially have a negative impact on performance. Cross-fitting is again another reasonable approach to circumventing this issue. Augmentation functions can be constructed (with cross-fitting as an option) via the <code>create.augmentation.function()</code> function, which works similarly as the <code>create.propensity.function()</code> function. The basic usage is as follows:</p>
+<h1><span class="header-section-number">3</span> Augmentation
+utilities</h1>
+<p>Efficiency in estimating ITRs can be improved by including an
+augmentation term. The optimal augmentation term generally is a function
+of the main effects of the full outcome regression model marginalized
+over the treatment. Especially in high dimensions, regularization bias
+can potentially have a negative impact on performance. Cross-fitting is
+again another reasonable approach to circumventing this issue.
+Augmentation functions can be constructed (with cross-fitting as an
+option) via the <code>create.augmentation.function()</code> function,
+which works similarly as the <code>create.propensity.function()</code>
+function. The basic usage is as follows:</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>aug.func <span class="ot">&lt;-</span> <span class="fu">create.augmentation.function</span>(<span class="at">family =</span> <span class="st">&quot;gaussian&quot;</span>,</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>                                         <span class="at">crossfit =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>                                         <span class="at">nfolds.crossfit =</span> <span class="dv">10</span>,</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>                                         <span class="at">cv.glmnet.args =</span> <span class="fu">list</span>(<span class="at">type.measure =</span> <span class="st">&quot;mae&quot;</span>, <span class="at">nfolds =</span> <span class="dv">5</span>))</span></code></pre></div>
-<p><code>aug.func</code> can be used for augmentation by passing it to <code>fit.subgroup()</code> like:</p>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>                                         <span class="at">nfolds.crossfit =</span> <span class="dv">4</span>,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>                                         <span class="at">cv.glmnet.args =</span> <span class="fu">list</span>(<span class="at">type.measure =</span> <span class="st">&quot;mae&quot;</span>, <span class="at">nfolds =</span> <span class="dv">3</span>))</span></code></pre></div>
+<p>We have set <code>nfolds</code> to 3 for computational reasons; it
+should generally be higher, such as 10.</p>
+<p><code>aug.func</code> can be used for augmentation by passing it to
+<code>fit.subgroup()</code> like:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>subgrp.model.aug <span class="ot">&lt;-</span> <span class="fu">fit.subgroup</span>(<span class="at">x =</span> x, <span class="at">y =</span> y,</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>                             <span class="at">trt =</span> trt,</span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>                             <span class="at">propensity.func =</span> prop.func,</span>
 <span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>                             <span class="at">augment.func =</span> aug.func,</span>
 <span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>                             <span class="at">loss   =</span> <span class="st">&quot;sq_loss_lasso&quot;</span>,</span>
-<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>                             <span class="at">nfolds =</span> <span class="dv">10</span>)    <span class="co"># option for cv.glmnet (for ITR estimation)</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>                             <span class="at">nfolds =</span> <span class="dv">3</span>)    <span class="co"># option for cv.glmnet (for ITR estimation)</span></span>
 <span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(subgrp.model.aug)</span></code></pre></div>
 <pre><code>## family:    gaussian 
@@ -273,15 +506,15 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 ## Trt recom = 1*I(f(x)&gt;c)+0*I(f(x)&lt;=c) where c is &#39;cutpoint&#39;
 ## 
 ## Average Outcomes:
-##                 Recommended 0      Recommended 1
-## Received 0  -6.1711 (n = 140) -20.1641 (n = 260)
-## Received 1 -17.8515 (n = 207) -11.2203 (n = 393)
+##                Recommended 0     Recommended 1
+## Received 0   9.571 (n = 103) -7.8823 (n = 102)
+## Received 1 -2.2994 (n = 120)   0.008 (n = 175)
 ## 
 ## Treatment effects conditional on subgroups:
 ## Est of E[Y|T=0,Recom=0]-E[Y|T=/=0,Recom=0] 
-##                          11.6804 (n = 347) 
+##                          11.8704 (n = 223) 
 ## Est of E[Y|T=1,Recom=1]-E[Y|T=/=1,Recom=1] 
-##                           8.9438 (n = 653) 
+##                           7.8903 (n = 277) 
 ## 
 ## NOTE: The above average outcomes are biased estimates of
 ##       the expected outcomes conditional on subgroups. 
@@ -290,8 +523,8 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 ## ---------------------------------------------------
 ## 
 ## Benefit score quantiles (f(X) for 1 vs 0): 
-##      0%     25%     50%     75%    100% 
-## -5.8772 -0.5707  0.7856  2.3832  8.3908 
+##       0%      25%      50%      75%     100% 
+## -13.5302  -2.1872   0.6803   3.6881  13.3778 
 ## 
 ## ---------------------------------------------------
 ## 
@@ -299,22 +532,24 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 ## E[Y|T=1, X] - E[Y|T=0, X]
 ## 
 ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-## -11.754  -1.141   1.571   1.647   4.766  16.782 
+## -27.060  -4.374   1.361   1.381   7.376  26.756 
 ## 
 ## ---------------------------------------------------
 ## 
-## 1 out of 50 interactions selected in total by the lasso (cross validation criterion).
+## 6 out of 10 interactions selected in total by the lasso (cross validation criterion).
 ## 
 ## The first estimate is the treatment main effect, which is always selected. 
 ## Any other variables selected represent treatment-covariate interactions.
 ## 
-##            Trt1   V2
-## Estimate 0.8569 0.69</code></pre>
+##            Trt1      V1     V2      V3      V5      V6    V8
+## Estimate 0.9222 -0.9353 1.0194 -0.4164 -0.0945 -0.1404 0.118</code></pre>
 </div>
 <div id="comparing-performance-with-augmentation" class="section level1" number="4">
-<h1 number="4"><span class="header-section-number">4</span> Comparing performance with augmentation</h1>
-<p>We first run the training/testing procedure to assess the performance of the non-augmented estimator:</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>valmod <span class="ot">&lt;-</span> <span class="fu">validate.subgroup</span>(subgrp.model, <span class="at">B =</span> <span class="dv">5</span>,</span>
+<h1><span class="header-section-number">4</span> Comparing performance
+with augmentation</h1>
+<p>We first run the training/testing procedure to assess the performance
+of the non-augmented estimator:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>valmod <span class="ot">&lt;-</span> <span class="fu">validate.subgroup</span>(subgrp.model, <span class="at">B =</span> <span class="dv">3</span>,</span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>                            <span class="at">method =</span> <span class="st">&quot;training_test&quot;</span>,</span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>                            <span class="at">train.fraction =</span> <span class="fl">0.75</span>)</span>
 <span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>valmod</span></code></pre></div>
@@ -324,27 +559,32 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 ## 
 ## validation method:  training_test_replication 
 ## cutpoint:           0 
-## replications:       5 
+## replications:       3 
 ## 
 ## benefit score: f(x), 
 ## Trt recom = 1*I(f(x)&gt;c)+0*I(f(x)&lt;=c) where c is &#39;cutpoint&#39;
 ## 
 ## Average Test Set Outcomes:
-##                               Recommended 0                    Recommended 1
-## Received 0 -10.9315 (SE = 5.5637, n = 24.6) -16.2869 (SE = 2.7115, n = 73.4)
-## Received 1  -14.7973 (SE = 2.647, n = 88.2) -11.6371 (SE = 3.6671, n = 63.8)
+##                            Recommended 0                       Recommended 1
+## Received 0  7.0026 (SE = 3.0607, n = 31) -13.9625 (SE = 6.6671, n = 15.6667)
+## Received 1 -3.2555 (SE = 0.8747, n = 37)  -0.9539 (SE = 0.5936, n = 41.3333)
 ## 
 ## Treatment effects conditional on subgroups:
 ## Est of E[Y|T=0,Recom=0]-E[Y|T=/=0,Recom=0] 
-##             3.8658 (SE = 6.848, n = 112.8) 
+##               10.258 (SE = 3.5586, n = 68) 
 ## Est of E[Y|T=1,Recom=1]-E[Y|T=/=1,Recom=1] 
-##            4.6498 (SE = 2.2761, n = 137.2) 
+##              13.0086 (SE = 7.1043, n = 57) 
 ## 
 ## Est of 
 ## E[Y|Trt received = Trt recom] - E[Y|Trt received =/= Trt recom]:                     
-## 4.0368 (SE = 3.0118)</code></pre>
-<p>Then we compare with the augmented estimator. Although this is based on just 5 replications, we can see that the augmented estimator is much better at discriminating between benefitting and non-benefitting patients, as evidenced by the large treatment effect among those predicted to benefit by the augmented estimator versus the smaller conditional treatment effect above.</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>valmod.aug <span class="ot">&lt;-</span> <span class="fu">validate.subgroup</span>(subgrp.model.aug, <span class="at">B =</span> <span class="dv">5</span>,</span>
+## 9.5398 (SE = 2.0051)</code></pre>
+<p>Then we compare with the augmented estimator. Although this is based
+on just 3 replications, we can see that the augmented estimator is
+better at discriminating between benefitting and non-benefitting
+patients, as evidenced by the large treatment effect among those
+predicted to benefit (and smaller standard error) by the augmented
+estimator versus the smaller conditional treatment effect above.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>valmod.aug <span class="ot">&lt;-</span> <span class="fu">validate.subgroup</span>(subgrp.model.aug, <span class="at">B =</span> <span class="dv">3</span>,</span>
 <span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>                                <span class="at">method =</span> <span class="st">&quot;training_test&quot;</span>,</span>
 <span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>                                <span class="at">train.fraction =</span> <span class="fl">0.75</span>)</span>
 <span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>valmod.aug</span></code></pre></div>
@@ -354,25 +594,28 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 ## 
 ## validation method:  training_test_replication 
 ## cutpoint:           0 
-## replications:       5 
+## replications:       3 
 ## 
 ## benefit score: f(x), 
 ## Trt recom = 1*I(f(x)&gt;c)+0*I(f(x)&lt;=c) where c is &#39;cutpoint&#39;
 ## 
 ## Average Test Set Outcomes:
-##                              Recommended 0                    Recommended 1
-## Received 0 -7.7207 (SE = 4.8852, n = 37.8) -18.6941 (SE = 4.3459, n = 65.8)
-## Received 1    -16.52 (SE = 4.0857, n = 56) -10.8847 (SE = 2.8148, n = 90.4)
+##                                 Recommended 0
+## Received 0 10.5794 (SE = 2.6567, n = 23.6667)
+## Received 1      -4.9438 (SE = 4.4187, n = 31)
+##                                  Recommended 1
+## Received 0 -10.6693 (SE = 5.1586, n = 25.6667)
+## Received 1  -1.0748 (SE = 1.9236, n = 44.6667)
 ## 
 ## Treatment effects conditional on subgroups:
 ## Est of E[Y|T=0,Recom=0]-E[Y|T=/=0,Recom=0] 
-##             8.7993 (SE = 7.2892, n = 93.8) 
+##         15.5232 (SE = 1.8056, n = 54.6667) 
 ## Est of E[Y|T=1,Recom=1]-E[Y|T=/=1,Recom=1] 
-##            7.8094 (SE = 5.1533, n = 156.2) 
+##          9.5945 (SE = 5.7758, n = 70.3333) 
 ## 
 ## Est of 
-## E[Y|Trt received = Trt recom] - E[Y|Trt received =/= Trt recom]:                     
-## 7.9081 (SE = 5.1089)</code></pre>
+## E[Y|Trt received = Trt recom] - E[Y|Trt received =/= Trt recom]:                      
+## 11.0473 (SE = 1.7645)</code></pre>
 </div>
 
 

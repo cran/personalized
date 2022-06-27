@@ -13,6 +13,7 @@ get.pred.func <- function(fit.name, model, env = parent.frame())
         {
             pred.func <- function(x, type = c("link", "class"))
             {
+                type <- match.arg(type)
                 df.pred <- data.frame(cbind(1, x[,sel.idx[-1] - 1]))
                 colnames(df.pred) <- vnames
                 df.pred$trt_1n1 <- 1
@@ -22,29 +23,39 @@ get.pred.func <- function(fit.name, model, env = parent.frame())
         {
             pred.func <- function(x, type = c("link", "class"))
             {
+                type <- match.arg(type)
                 df.pred <- data.frame(cbind(1, x[,sel.idx[-1] - 1]))
                 colnames(df.pred) <- vnames
                 df.pred$trt_1n1 <- 1
                 drop(predict(model, newdata = df.pred, type = "link"))
             }
         }
-        # GBM models
-    } else if (grepl("_gbm$",fit.name))
+        # xgboost models
+    } else if (grepl("_xgboost$", fit.name))
     {
         pred.func <- function(x, type = c("link", "class"))
         {
-            df.x <- data.frame(cbind(1, x))
-            df.x$offset <- rep(0, NROW(x))
-            colnames(df.x) <- vnames
-            drop(predict(model, newdata = df.x, n.trees = best.iter, type = "link"))
+            type <- match.arg(type)
+            df <- xgb.DMatrix(x)
+
+            if (type == "link")
+            {
+                outputmargin <- TRUE
+            } else
+            {
+                outputmargin <- FALSE
+            }
+
+            drop(predict(model, newdata = df, outputmargin = outputmargin))
         }
-        # non-GAM/GBM LASSO models (loss ends in _lasso)
+        # non-GAM/xgboost LASSO models (loss ends in _lasso)
     } else if (grepl("_lasso$",fit.name))
     {
         if (grepl("_cox", fit.name))
         {
             pred.func <- function(x, type = c("link", "class"))
             {
+                type <- match.arg(type)
                 if (n.trts == 2)
                 {
                     -drop(predict(model, newx = cbind(1, x),
@@ -146,7 +157,6 @@ get.coef.func <- function(fit.name, env = parent.frame())
         {
             coef(mod)
         }
-        # Not sure what the analogue is for GBM models, since there aren't any coefficients to return
     } else
     {
         coef.func <- function(mod)
@@ -159,7 +169,7 @@ get.coef.func <- function(fit.name, env = parent.frame())
 
 #' @import glmnet
 #' @importFrom stats coef
-fit_sq_loss_lasso <- function(x, y, trt, n.trts, wts, family, match.id, intercept = FALSE, ...)
+fit_sq_loss_lasso <- function(x, y, trt, n.trts, wts, family, match.id, trt.multiplier, intercept = FALSE, ...)
 {
     # this function must return a fitted model
     # in addition to a function which takes in
@@ -175,7 +185,6 @@ fit_sq_loss_lasso <- function(x, y, trt, n.trts, wts, family, match.id, intercep
     ##                 function
     ##
     ###################################################################
-
 
     list.dots <- list(...)
     dot.names <- names(list.dots)
@@ -289,7 +298,7 @@ fit_logistic_loss_lasso <- fit_sq_loss_lasso
 fit_poisson_loss_lasso  <- fit_sq_loss_lasso
 
 #' @import survival
-fit_cox_loss_lasso <- function(x, y, trt, n.trts, wts, family, match.id, ...)
+fit_cox_loss_lasso <- function(x, y, trt, n.trts, wts, family, match.id, trt.multiplier, ...)
 {
 
     list.dots <- list(...)
@@ -381,7 +390,7 @@ fit_cox_loss_lasso <- function(x, y, trt, n.trts, wts, family, match.id, ...)
 
 #' @import mgcv
 #' @importFrom stats as.formula binomial gaussian
-fit_sq_loss_lasso_gam <- function(x, y, trt, n.trts, wts, family, match.id, intercept = FALSE, ...)
+fit_sq_loss_lasso_gam <- function(x, y, trt, n.trts, wts, family, match.id, trt.multiplier, intercept = FALSE, ...)
 {
     # this function must return a fitted model
     # in addition to a function which takes in
@@ -431,6 +440,7 @@ fit_sq_loss_lasso_gam <- function(x, y, trt, n.trts, wts, family, match.id, inte
     {
         trt.y <- trt
 
+        ## can also use 'trt.multiplier'
         trt_1n1 <- ifelse(trt == unique.trts[2], 1, -1)
     } else
     {
@@ -496,7 +506,7 @@ fit_sq_loss_lasso_gam <- function(x, y, trt, n.trts, wts, family, match.id, inte
 
     # fit a model with a lasso
     # penalty and desired loss:
-    sel.model <- do.call(cv.glmnet, c(list(x = x, y = y, weights = wts, family = family),
+    sel.model <- do.call(cv.glmnet, c(list(x = trt.multiplier * x, y = y, weights = wts, family = family),
                                       list.dots[dots.idx.glmnet]))
 
 
@@ -571,6 +581,9 @@ fit_sq_loss_lasso_gam <- function(x, y, trt, n.trts, wts, family, match.id, inte
 
     colnames(df) <- c("y", sel.vnames)
 
+    ## need binary vars to also be multiplied!!
+    df[,binary.vars] <- trt.multiplier * df[,binary.vars]
+
     vnames <- sel.vnames
 
 
@@ -605,7 +618,7 @@ fit_poisson_loss_lasso_gam  <- fit_sq_loss_lasso_gam
 
 
 
-fit_sq_loss_gam <- function(x, y, trt, n.trts, wts, family, match.id, ...)
+fit_sq_loss_gam <- function(x, y, trt, n.trts, wts, family, match.id, trt.multiplier, ...)
 {
     # this function must return a fitted model
     # in addition to a function which takes in
@@ -721,6 +734,9 @@ fit_sq_loss_gam <- function(x, y, trt, n.trts, wts, family, match.id, ...)
     df <- data.frame(y = y, x = x[,sel.idx], trt_1n1 = trt_1n1)
     colnames(df) <- c("y", sel.vnames)
 
+    ## need binary vars to also be multiplied!!
+    df[,binary.vars] <- trt.multiplier * df[,binary.vars]
+
     vnames <- sel.vnames
 
     # fit gam model:
@@ -745,380 +761,15 @@ fit_sq_loss_gam <- function(x, y, trt, n.trts, wts, family, match.id, ...)
          coefficients = get.coef.func("fit_sq_loss_gam")(model))
 }
 
+
 fit_logistic_loss_gam <- fit_sq_loss_gam
 fit_poisson_loss_gam  <- fit_sq_loss_gam
 fit_cox_loss_gam      <- fit_sq_loss_gam
 
 
 
-#' @import gbm
-fit_sq_loss_gbm <- function(x, y, trt, n.trts, wts, family, match.id, ...)
-{
-    # this function must return a fitted model
-    # in addition to a function which takes in
-    # a design matrix and outputs estimated benefit scores
 
-    ###################################################################
-    ##
-    ## IMPORTANT NOTE: the name of this function *must*
-    ##                 begin with "fit_" and end with
-    ##                 the text string to associated with
-    ##                 this function in the options for the
-    ##                 'loss' argument of the fit.subgrp()
-    ##                 function
-    ##
-    ###################################################################
-
-    list.dots <- list(...)
-
-    dot.names <- names(list.dots)
-    if ("cv.folds" %in% dot.names)
-    {
-        cv.folds <- list.dots["cv.folds"]
-        if (cv.folds < 2)
-        {
-            cv.folds <- 2L
-            list.dots$cv.folds <- cv.folds
-            warning("cv.folds must be at least 2, setting cv.folds to 2.")
-        }
-
-    } else
-    {
-        list.dots$cv.folds <- 5L
-    }
-
-    if (!is.null(match.id)) {
-        warning("Matched groups are not guaranteed to remain matched in the cross-validation procedure using GBM models.")
-    }
-
-
-
-
-    if ("offset" %in% dot.names)
-    {
-        df <- data.frame(y = y, x, offset = list.dots$offset)
-        list.dots$offset <- NULL
-    } else
-    {
-        df <- data.frame(y = y, x, offset = rep(0,NROW(x)))
-    }
-
-    formula.gbm <- as.formula("y ~ . - 1 + offset(offset)")
-
-    # fit a model with a lasso
-    # penalty and desired loss
-    model <- do.call(gbm, c(list(formula.gbm, data = df,
-                                 weights = wts,
-                                 distribution = family),
-                            list.dots))
-
-    best.iter <- gbm.perf(model, method = "cv")
-
-    vnames <- colnames(df)[-1]
-
-    # Return fitted model and extraction methods
-    list(predict      = get.pred.func("fit_sq_loss_gbm", model),
-         model        = model,
-         coefficients = get.coef.func("fit_sq_loss_gbm")(model))
-}
-
-fit_poisson_loss_gbm <- fit_sq_loss_gbm
-
-#
-#
-# fit_abs_loss_gbm <- function(x, y, trt, n.trts, wts, family, match.id, ...)
-# {
-#     # this function must return a fitted model
-#     # in addition to a function which takes in
-#     # a design matrix and outputs estimated benefit scores
-#
-#     ###################################################################
-#     ##
-#     ## IMPORTANT NOTE: the name of this function *must*
-#     ##                 begin with "fit_" and end with
-#     ##                 the text string to associated with
-#     ##                 this function in the options for the
-#     ##                 'loss' argument of the fit.subgrp()
-#     ##                 function
-#     ##
-#     ###################################################################
-#
-#     list.dots <- list(...)
-#
-#     dot.names <- names(list.dots)
-#     if ("cv.folds" %in% dot.names)
-#     {
-#         cv.folds <- list.dots["cv.folds"]
-#         if (cv.folds < 2)
-#         {
-#             cv.folds <- 2L
-#             list.dots$cv.folds <- cv.folds
-#             warning("cv.folds must be at least 2, setting cv.folds to 2.")
-#         }
-#
-#     } else
-#     {
-#         list.dots$cv.folds <- 5L
-#     }
-#
-#     if (!is.null(match.id))
-#     {
-#         warning("Matched groups are not guaranteed to remain matched in the cross-validation procedure using GBM models.")
-#     }
-#
-#     if ("offset" %in% dot.names)
-#     {
-#         df <- data.frame(y = y, x, offset = list.dots$offset)
-#         list.dots$offset <- NULL
-#     } else
-#     {
-#         df <- data.frame(y = y, x, offset = rep(0,NROW(x)))
-#     }
-#
-#     formula.gbm <- as.formula("y ~ . - 1 + offset(offset)")
-#
-#     # fit a model with a lasso
-#     # penalty and desired loss
-#     model <- do.call(gbm, c(list(formula.gbm, data = df,
-#                                  weights = wts,
-#                                  distribution = "laplace"),
-#                             list.dots))
-#
-#     best.iter <- gbm.perf(model, method = "cv")
-#
-#     vnames <- colnames(df)[-1]
-#
-#     # Return fitted model and extraction methods
-#     list(predict      = get.pred.func("fit_abs_loss_gbm", model),
-#          model        = model,
-#          coefficients = get.coef.func("fit_abs_loss_gbm")(model))
-# }
-
-
-fit_logistic_loss_gbm <- function(x, y, trt, n.trts, wts, family, match.id, ...)
-{
-    # this function must return a fitted model
-    # in addition to a function which takes in
-    # a design matrix and outputs estimated benefit scores
-
-    ###################################################################
-    ##
-    ## IMPORTANT NOTE: the name of this function *must*
-    ##                 begin with "fit_" and end with
-    ##                 the text string to associated with
-    ##                 this function in the options for the
-    ##                 'loss' argument of the fit.subgrp()
-    ##                 function
-    ##
-    ###################################################################
-
-    list.dots <- list(...)
-
-    dot.names <- names(list.dots)
-    if ("cv.folds" %in% dot.names)
-    {
-        cv.folds <- list.dots["cv.folds"]
-        if (cv.folds < 2)
-        {
-            cv.folds <- 2L
-            list.dots$cv.folds <- cv.folds
-            warning("cv.folds must be at least 2, setting cv.folds to 2.")
-        }
-
-    } else
-    {
-        list.dots$cv.folds <- 5L
-    }
-
-    if (!is.null(match.id))
-    {
-        warning("Matched groups are not guaranteed to remain matched in the cross-validation procedure using GBM models.")
-    }
-
-    if ("offset" %in% dot.names)
-    {
-        df <- data.frame(y = y, x, offset = list.dots$offset)
-        list.dots$offset <- NULL
-    } else
-    {
-        df <- data.frame(y = y, x, offset = rep(0,NROW(x)))
-    }
-
-    formula.gbm <- as.formula("y ~ . - 1 + offset(offset)")
-
-    # fit a model with a lasso
-    # penalty and desired loss
-    model <- do.call(gbm, c(list(formula.gbm, data = df,
-                                 weights = wts,
-                                 distribution = "bernoulli"),
-                            list.dots))
-
-    best.iter <- gbm.perf(model, method = "cv")
-
-    vnames <- colnames(df)[-1]
-
-    # Return fitted model and extraction methods
-    list(predict      = get.pred.func("fit_logistic_loss_gbm", model),
-         model        = model,
-         coefficients = get.coef.func("fit_logistic_loss_gbm")(model))
-}
-
-
-#
-# fit_poisson_loss_gbm <- function(x, y, trt, n.trts, wts, family, match.id, ...)
-# {
-#     # this function must return a fitted model
-#     # in addition to a function which takes in
-#     # a design matrix and outputs estimated benefit scores
-#
-#     ###################################################################
-#     ##
-#     ## IMPORTANT NOTE: the name of this function *must*
-#     ##                 begin with "fit_" and end with
-#     ##                 the text string to associated with
-#     ##                 this function in the options for the
-#     ##                 'loss' argument of the fit.subgrp()
-#     ##                 function
-#     ##
-#     ###################################################################
-#
-#     list.dots <- list(...)
-#
-#     dot.names <- names(list.dots)
-#     if ("cv.folds" %in% dot.names)
-#     {
-#         cv.folds <- list.dots["cv.folds"]
-#         if (cv.folds < 2)
-#         {
-#             cv.folds <- 2L
-#             list.dots$cv.folds <- cv.folds
-#             warning("cv.folds must be at least 2, setting cv.folds to 2.")
-#         }
-#
-#     } else
-#     {
-#         list.dots$cv.folds <- 5L
-#     }
-#
-#     if (!is.null(match.id))
-#     {
-#         warning("Matched groups are not guaranteed to remain matched in the cross-validation procedure using GBM models.")
-#     }
-#
-#     if ("offset" %in% dot.names)
-#     {
-#         df <- data.frame(y = y, x, offset = list.dots$offset)
-#         list.dots$offset <- NULL
-#     } else
-#     {
-#         df <- data.frame(y = y, x, offset = rep(0,NROW(x)))
-#     }
-#
-#     formula.gbm <- as.formula("y ~ . - 1 + offset(offset)")
-#
-#     # fit a model with a lasso
-#     # penalty and desired loss
-#     model <- do.call(gbm, c(list(formula.gbm, data = df,
-#                                  weights = wts,
-#                                  distribution = "poisson"),
-#                             list.dots))
-#
-#     best.iter <- gbm.perf(model, method = "cv")
-#
-#     vnames <- colnames(df)[-1]
-#
-#     # Return fitted model and extraction methods
-#     list(predict      = get.pred.func("fit_poisson_loss_gbm", model),
-#          model        = model,
-#          coefficients = get.coef.func("fit_poisson_loss_gbm")(model))
-# }
-#
-
-fit_cox_loss_gbm <- function(x, y, trt, n.trts, wts, family, match.id, ...)
-{
-    # this function must return a fitted model
-    # in addition to a function which takes in
-    # a design matrix and outputs estimated benefit scores
-
-    ###################################################################
-    ##
-    ## IMPORTANT NOTE: the name of this function *must*
-    ##                 begin with "fit_" and end with
-    ##                 the text string to associated with
-    ##                 this function in the options for the
-    ##                 'loss' argument of the fit.subgrp()
-    ##                 function
-    ##
-    ###################################################################
-
-    list.dots <- list(...)
-
-    dot.names <- names(list.dots)
-    if ("cv.folds" %in% dot.names)
-    {
-        cv.folds <- list.dots["cv.folds"]
-        if (cv.folds < 2)
-        {
-            cv.folds <- 2L
-            list.dots$cv.folds <- cv.folds
-            warning("cv.folds must be at least 2")
-        }
-
-    } else
-    {
-        list.dots$cv.folds <- 5L
-    }
-
-    if (!is.null(match.id))
-    {
-        warning("Matched groups are not guaranteed to remain matched in the cross-validation procedure using GBM models.")
-    }
-
-    surv.vnames <- colnames(y)
-
-    time.idx   <- which(surv.vnames == "time")
-    status.idx <- which(surv.vnames == "status")
-
-    if ("offset" %in% dot.names)
-    {
-        df <- data.frame(cox_gbm_time = y[,time.idx],
-                         cox_gbm_status = y[,status.idx], x,
-                         offset = list.dots$offset)
-        list.dots$offset <- NULL
-    } else
-    {
-        df <- data.frame(cox_gbm_time = y[,time.idx],
-                         cox_gbm_status = y[,status.idx], x,
-                         offset = rep(0,NROW(x)))
-    }
-
-    formula.gbm <- as.formula("Surv(cox_gbm_time, cox_gbm_status) ~ . - 1 + offset(offset)")
-
-    # fit a model with a lasso
-    # penalty and desired loss
-    model <- do.call(gbm, c(list(formula.gbm, data = df,
-                                 weights = wts,
-                                 distribution = "coxph"),
-                            list.dots))
-
-    best.iter <- gbm.perf(model, method = "cv")
-
-    vnames <- colnames(df)[-c(1,2)]
-
-    # Return fitted model and extraction methods
-    list(predict      = get.pred.func("fit_cox_loss_gbm", model),
-         model        = model,
-         coefficients = get.coef.func("fit_cox_loss_gbm")(model))
-}
-
-
-
-
-
-
-
-
-fit_owl_hinge_loss <- function(x, y, trt, n.trts, wts, family, match.id, ...)
+fit_owl_hinge_loss <- function(x, y, trt, n.trts, wts, family, match.id, trt.multiplier, ...)
 {
 
     list.dots <- list(...)

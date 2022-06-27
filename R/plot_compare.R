@@ -58,14 +58,18 @@
 #'                            trt = trt01,
 #'                            propensity.func = prop.func,
 #'                            loss   = "sq_loss_lasso",
-#'                            nfolds = 5)              # option for cv.glmnet
+#'                            # option for cv.glmnet,
+#'                            # better to use 'nfolds=10'
+#'                            nfolds = 3)              # option for cv.glmnet
 #'
 #'
 #' subgrp.model.o <- fit.subgroup(x = x, y = y,
 #'                            trt = trt01,
 #'                            propensity.func = prop.func,
+#'                            # option for cv.glmnet,
+#'                            # better to use 'nfolds=10'
 #'                            loss   = "owl_logistic_flip_loss_lasso",
-#'                            nfolds = 5)
+#'                            nfolds = 3)
 #'
 #' plotCompare(subgrp.model, subgrp.model.o)
 #'
@@ -84,8 +88,8 @@ plotCompare <- function(...,
     if (n.obj == 0)
         stop("no fitted or validated model objects specified to be plotted")
 
-    ok <- sapply(list.obj, function(lo) (class(lo)[1] == "subgroup_fitted") |
-                                        (class(lo)[1] == "subgroup_validated"))
+    ok <- sapply(list.obj, function(lo) (inherits(lo, "subgroup_fitted")) |
+                                        (inherits(lo, "subgroup_validated")))
 
     ## get names of supplied objects
     ## and print them if they are not appropriate objects
@@ -101,8 +105,8 @@ plotCompare <- function(...,
 
     type <- match.arg(type)
 
-    is_fitted_obj    <- sapply(list.obj, function(lo) (class(lo)[1] == "subgroup_fitted"))
-    is_validated_obj <- sapply(list.obj, function(lo) (class(lo)[1] == "subgroup_validated"))
+    is_fitted_obj    <- sapply(list.obj, function(lo) ( inherits(lo, "subgroup_fitted")))
+    is_validated_obj <- sapply(list.obj, function(lo) ( inherits(lo, "subgroup_validated")))
 
     if (type == "conditional" & (!all(is_fitted_obj) & !all(is_validated_obj)))
     {
@@ -125,7 +129,7 @@ plotCompare <- function(...,
 
         obj.type <- class(list.obj[[l]])[1]
 
-        if (obj.type == "subgroup_fitted")
+        if (inherits(list.obj[[l]], "subgroup_fitted"))
         {
             avg.res  <- list.obj[[l]]$subgroup.trt.effects
         } else
@@ -177,7 +181,7 @@ plotCompare <- function(...,
                     res.2.plot[, 1] <- paste("Recommended", trt.rec)
                     res.2.plot[, 2] <- list.obj[[l]]$call$trt #paste("Received", list.obj[[l]]$call$trt)
 
-                    if (class(list.obj[[l]]$call$y) == "Surv")
+                    if (inherits(list.obj[[l]]$call$y, "Surv"))
                     {
                         res.2.plot[, 3] <- log(list.obj[[l]]$call$y[,1])
                     } else
@@ -198,7 +202,7 @@ plotCompare <- function(...,
                     res.2.plot[, 1] <- benefit.scores
                     res.2.plot[, 2] <- list.obj[[l]]$call$trt #paste("Received", list.obj[[l]]$call$trt)
 
-                    if (class(list.obj[[l]]$call$y) == "Surv")
+                    if (inherits(list.obj[[l]]$call$y, "Surv"))
                     {
                         res.2.plot[, 3] <- log(list.obj[[l]]$call$y[,1])
                     } else
