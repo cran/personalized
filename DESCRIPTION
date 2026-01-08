@@ -2,7 +2,7 @@ Package: personalized
 Type: Package
 Title: Estimation and Validation Methods for Subgroup Identification
         and Personalized Medicine
-Version: 0.2.7
+Version: 0.2.8
 Authors@R: c(
     person("Jared", "Huling",  role = c("aut", "cre"), email = "jaredhuling@gmail.com",
             comment = c(ORCID = "0000-0003-0670-4845")),
@@ -23,16 +23,18 @@ License: GPL-2
 Encoding: UTF-8
 LazyData: true
 Suggests: knitr, rmarkdown, testthat, nnet
-Imports: survival, methods, kernlab, foreach, xgboost
+Imports: survival, methods, kernlab, foreach, xgboost (>= 3.1.2.1),
+        data.table (>= 1.9.6)
 Depends: glmnet (>= 2.0-13), mgcv, ggplot2, plotly
-RoxygenNote: 7.2.0
+RoxygenNote: 7.3.3
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2022-06-27 18:11:34 UTC; huling
-Author: Jared Huling [aut, cre] (<https://orcid.org/0000-0003-0670-4845>),
+Packaged: 2025-12-27 20:12:27 UTC; huling
+Author: Jared Huling [aut, cre] (ORCID:
+    <https://orcid.org/0000-0003-0670-4845>),
   Aaron Potvien [ctb],
   Alexandros Karatzoglou [cph],
   Alex Smola [cph]
 Maintainer: Jared Huling <jaredhuling@gmail.com>
 Repository: CRAN
-Date/Publication: 2022-06-27 20:20:03 UTC
+Date/Publication: 2026-01-08 08:10:02 UTC

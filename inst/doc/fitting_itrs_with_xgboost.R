@@ -68,18 +68,18 @@ subgrp.model.xgb <- fit.subgroup(x = x, y = y,
 subgrp.model.xgb
 
 ## ----eval=FALSE---------------------------------------------------------------
-#  valmod.lin <- validate.subgroup(subgrp.model.linear, B = 100,
-#                              method = "training_test",
-#                              train.fraction = 0.75)
-#  valmod.lin
+# valmod.lin <- validate.subgroup(subgrp.model.linear, B = 100,
+#                             method = "training_test",
+#                             train.fraction = 0.75)
+# valmod.lin
 
 ## ----eval=FALSE---------------------------------------------------------------
-#  valmod.xgb <- validate.subgroup(subgrp.model.xgb, B = 100,
-#                                  method = "training_test",
-#                                  train.fraction = 0.75)
-#  valmod.xgb
+# valmod.xgb <- validate.subgroup(subgrp.model.xgb, B = 100,
+#                                 method = "training_test",
+#                                 train.fraction = 0.75)
+# valmod.xgb
 
-## ---- fig.height=10-----------------------------------------------------------
+## ----fig.height=10------------------------------------------------------------
 
 ## RMSE (note: this is still on the in-sample data so
 ## out-of-sample RMSE is preferred to evaluate methods)
